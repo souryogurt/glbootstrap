@@ -5,7 +5,7 @@
 #include <X11/Xlib.h>
 #include <GL/glx.h>
 
-#define PACKAGE_STRING "glbootstrap"
+#define PACKAGE_STRING "glbootstrap 0.1"
 #define PACKAGE_BUGREPORT "egor.artemov@gmail.com"
 
 /** The name the program was run with */
@@ -311,8 +311,7 @@ static const char *version_text =
     "Copyright (C) 2014 Egor Artemov <egor.artemov@gmail.com>\n"
     "This work is free. You can redistribute it and/or modify it under the\n"
     "terms of the Do What The Fuck You Want To Public License, Version 2,\n"
-    "as published by Sam Hocevar. See http://www.wtfpl.net for more details."
-    "\n\nWritten by Egor Artemov\n";
+    "as published by Sam Hocevar. See http://www.wtfpl.net for more details.\n";
 
 /** Print usage information */
 static void print_usage (void)
@@ -339,10 +338,7 @@ int main (int argc, char *const *argv)
     Display *display = NULL;
     int opt;
     program_name = argv[0];
-    while (1) {
-        if ((opt = getopt_long (argc, argv, "hV", long_options, NULL)) == -1) {
-            break;
-        }
+    while ((opt = getopt_long (argc, argv, "hV", long_options, NULL)) != -1) {
         switch (opt) {
             case 'h':
                 print_usage();
