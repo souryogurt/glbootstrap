@@ -21,6 +21,17 @@ static int arb_create_context_extension = 0;
 static int arb_context_profile = 0;
 static PFNGLXCREATECONTEXTATTRIBSARBPROC glXCreateContextAttribsARB = NULL;
 
+typedef struct glx_context_info_t {
+    /* common glx data */
+    GLXContext context;
+    XVisualInfo *visual_info;
+
+    /* modern glx data */
+    GLXFBConfig best_fbconfig;
+    GLXWindow glx_window;
+} glx_context_info_t;
+
+
 /** Window type */
 typedef struct game_window_t {
     Display *display;
@@ -33,6 +44,8 @@ typedef struct game_window_t {
 } game_window_t;
 
 game_window_t main_window;
+
+glx_context_info_t context_info = {NULL};
 
 /** Process all pending events
  * @param window events of this window should be processed
@@ -116,10 +129,6 @@ static int create_window (Display *display, XVisualInfo *vi,
  */
 static int modern_run (Display *display, int screen)
 {
-    GLXFBConfig best_fbconfig;
-    XVisualInfo *visual_info = NULL;
-    GLXWindow glx_window;
-    GLXContext context = NULL;
     static int attribs[] = {
         GLX_X_RENDERABLE, True,
         GLX_DRAWABLE_TYPE, GLX_WINDOW_BIT,
@@ -141,39 +150,44 @@ static int modern_run (Display *display, int screen)
                  program_name);
         return EXIT_FAILURE;
     }
-    best_fbconfig = fbc[0];
+    context_info.best_fbconfig = fbc[0];
     XFree (fbc);
-    visual_info = glXGetVisualFromFBConfig (display, best_fbconfig);
-    if (visual_info == NULL) {
+    context_info.visual_info = glXGetVisualFromFBConfig (display,
+                               context_info.best_fbconfig);
+    if (context_info.visual_info == NULL) {
         fprintf (stderr, "%s: can't retrieve a visual\n", program_name);
         return EXIT_FAILURE;
     }
-    create_window (display, visual_info, &main_window);
-    XFree (visual_info);
+    create_window (display, context_info.visual_info, &main_window);
+    XFree (context_info.visual_info);
 
-    glx_window = glXCreateWindow (display, best_fbconfig, main_window.xwindow,
-                                  NULL);
+    context_info.glx_window = glXCreateWindow (display,
+                              context_info.best_fbconfig, main_window.xwindow,
+                              NULL);
     if (arb_create_context_extension != 0) {
         int context_attribs[] = {
             GLX_CONTEXT_MAJOR_VERSION_ARB, 1,
             GLX_CONTEXT_MINOR_VERSION_ARB, 0,
             None
         };
-        context = glXCreateContextAttribsARB (display, best_fbconfig, NULL,
-                                              True, context_attribs);
+        context_info.context = glXCreateContextAttribsARB (display,
+                               context_info.best_fbconfig, NULL, True,
+                               context_attribs);
     } else {
-        context = glXCreateNewContext (display, best_fbconfig, GLX_RGBA_TYPE,
-                                       NULL, True);
+        context_info.context = glXCreateNewContext (display,
+                               context_info.best_fbconfig, GLX_RGBA_TYPE, NULL,
+                               True);
     }
 
-    if (context == NULL) {
+    if (context_info.context == NULL) {
         fprintf (stderr, "%s: can't create OpenGL context\n", program_name);
-        glXDestroyWindow (display, glx_window);
+        glXDestroyWindow (display, context_info.glx_window);
         destroy_window (&main_window);
         return EXIT_FAILURE;
     }
 
-    glXMakeContextCurrent (display, glx_window, glx_window, context);
+    glXMakeContextCurrent (display, context_info.glx_window,
+                           context_info.glx_window, context_info.context);
 
     /*if (!game_init()) {
         glXMakeContextCurrent(display, 0, 0, 0);
@@ -186,12 +200,12 @@ static int modern_run (Display *display, int screen)
     while (!main_window.is_closed) {
         process_events (&main_window);
         /*game_tick();*/
-        glXSwapBuffers (display, glx_window);
+        glXSwapBuffers (display, context_info.glx_window);
     }
 
     glXMakeContextCurrent (display, 0, 0, 0);
-    glXDestroyContext (display, context);
-    glXDestroyWindow (display, glx_window);
+    glXDestroyContext (display, context_info.context);
+    glXDestroyWindow (display, context_info.glx_window);
     destroy_window (&main_window);
     return EXIT_SUCCESS;
 }
@@ -203,7 +217,6 @@ static int modern_run (Display *display, int screen)
  */
 static int legacy_run (Display *display, int screen)
 {
-    GLXContext context = NULL;
     static int attribs[] = {
         GLX_USE_GL, True,
         GLX_RGBA, True,
@@ -216,22 +229,23 @@ static int legacy_run (Display *display, int screen)
         GLX_DOUBLEBUFFER, True,
         None
     };
-    XVisualInfo *visual_info = glXChooseVisual (display, screen, attribs);
-    if (visual_info == NULL) {
+    context_info.visual_info = glXChooseVisual (display, screen, attribs);
+    if (context_info.visual_info == NULL) {
         fprintf (stderr, "%s: can't retrieve a visual\n", program_name);
         return EXIT_FAILURE;
     }
 
-    create_window (display, visual_info, &main_window);
-    context = glXCreateContext (display, visual_info, NULL, True);
-    XFree (visual_info);
+    create_window (display, context_info.visual_info, &main_window);
+    context_info.context = glXCreateContext (display, context_info.visual_info,
+                           NULL, True);
+    XFree (context_info.visual_info);
 
-    if (context == NULL) {
+    if (context_info.context == NULL) {
         fprintf (stderr, "%s: can't create OpenGL context\n", program_name);
         destroy_window (&main_window);
         return EXIT_FAILURE;
     }
-    glXMakeCurrent (display, main_window.xwindow, context);
+    glXMakeCurrent (display, main_window.xwindow, context_info.context);
     /*
         if (!game_init()) {
             glXMakeCurrent(display, 0, 0);
@@ -246,7 +260,7 @@ static int legacy_run (Display *display, int screen)
         glXSwapBuffers (display, main_window.xwindow);
     }
     glXMakeCurrent (display, 0, 0);
-    glXDestroyContext (display, context);
+    glXDestroyContext (display, context_info.context);
     destroy_window (&main_window);
     return EXIT_SUCCESS;
 }
