@@ -8,19 +8,6 @@
 #define PACKAGE_STRING "glbootstrap 0.1"
 #define PACKAGE_BUGREPORT "egor.artemov@gmail.com"
 
-/** The name the program was run with */
-const char *program_name;
-
-/** Version of glx */
-static int glx_major, glx_minor;
-
-/* GLX_ARB_create_context */
-static int arb_create_context_extension = 0;
-
-/* GLX_ARB_create_context_profile */
-static int arb_context_profile = 0;
-static PFNGLXCREATECONTEXTATTRIBSARBPROC glXCreateContextAttribsARB = NULL;
-
 typedef struct glx_context_info_t {
     /* common glx data */
     GLXContext context;
@@ -30,7 +17,6 @@ typedef struct glx_context_info_t {
     GLXFBConfig best_fbconfig;
     GLXWindow glx_window;
 } glx_context_info_t;
-
 
 /** Window type */
 typedef struct game_window_t {
@@ -46,6 +32,34 @@ typedef struct game_window_t {
 game_window_t main_window;
 
 glx_context_info_t context_info = {NULL};
+
+/** Version of glx */
+static int glx_major, glx_minor;
+
+/* GLX_ARB_create_context */
+static int arb_create_context_extension = 0;
+
+/* GLX_ARB_create_context_profile */
+static int arb_context_profile = 0;
+static PFNGLXCREATECONTEXTATTRIBSARBPROC glXCreateContextAttribsARB = NULL;
+
+/** The name the program was run with */
+const char *program_name;
+
+/** License text to show when application is runned with --version flag */
+static const char *version_text =
+    PACKAGE_STRING "\n\n"
+    "Copyright (C) 2014 Egor Artemov <egor.artemov@gmail.com>\n"
+    "This work is free. You can redistribute it and/or modify it under the\n"
+    "terms of the Do What The Fuck You Want To Public License, Version 2,\n"
+    "as published by Sam Hocevar. See http://www.wtfpl.net for more details.\n";
+
+/* Option flags and variables */
+static struct option const long_options[] = {
+    {"help", no_argument, NULL, 'h'},
+    {"version", no_argument, NULL, 'V'},
+    {NULL, 0, NULL, 0}
+};
 
 /** Process all pending events
  * @param window events of this window should be processed
@@ -120,6 +134,28 @@ static int create_window (Display *display, XVisualInfo *vi,
     window->wm_delete_window = XInternAtom (display, "WM_DELETE_WINDOW", False);
     XSetWMProtocols (display, window->xwindow, &window->wm_delete_window, 1);
     return 1;
+}
+
+/** Check that extension is in a list
+ * @param ext_string list of extensions separated by a space
+ * @param ext the extension to check in a list
+ * @returns 1 if extension is present in extensions list, 0 otherwise
+ */
+static int is_extension_supported (const char *ext_string, const char *ext)
+{
+    const char *start = ext_string;
+    const char *where = NULL;
+    size_t ext_length = strlen (ext);
+    while ((where = strstr (start, ext)) != NULL) {
+        const char *end = where + ext_length;
+        /* Check that is single word */
+        if (((*end == ' ') || (*end == '\0'))
+                && ((where == start) || * (where - 1) == ' ')) {
+            return 1;
+        }
+        start = end;
+    }
+    return 0;
 }
 
 /** Run OpenGL application on a system with a GLX >= 1.3
@@ -265,28 +301,6 @@ static int legacy_run (Display *display, int screen)
     return EXIT_SUCCESS;
 }
 
-/** Check that extension is in a list
- * @param ext_string list of extensions separated by a space
- * @param ext the extension to check in a list
- * @returns 1 if extension is present in extensions list, 0 otherwise
- */
-static int is_extension_supported (const char *ext_string, const char *ext)
-{
-    const char *start = ext_string;
-    const char *where = NULL;
-    size_t ext_length = strlen (ext);
-    while ((where = strstr (start, ext)) != NULL) {
-        const char *end = where + ext_length;
-        /* Check that is single word */
-        if (((*end == ' ') || (*end == '\0'))
-                && ((where == start) || * (where - 1) == ' ')) {
-            return 1;
-        }
-        start = end;
-    }
-    return 0;
-}
-
 /** Check GLX version and available extensions
  * @param display The display where application runs
  * @param screen the screen number where application runs
@@ -319,14 +333,6 @@ static int initialize_glx (Display *display, int screen)
     return 1;
 }
 
-/** License text to show when application is runned with --version flag */
-static const char *version_text =
-    PACKAGE_STRING "\n\n"
-    "Copyright (C) 2014 Egor Artemov <egor.artemov@gmail.com>\n"
-    "This work is free. You can redistribute it and/or modify it under the\n"
-    "terms of the Do What The Fuck You Want To Public License, Version 2,\n"
-    "as published by Sam Hocevar. See http://www.wtfpl.net for more details.\n";
-
 /** Print usage information */
 static void print_usage (void)
 {
@@ -337,13 +343,6 @@ static void print_usage (void)
     printf ("  -V, --version  output version information and exit\n");
     printf ("\nReport bugs to: <" PACKAGE_BUGREPORT ">\n");
 }
-
-/* Option flags and variables */
-static struct option const long_options[] = {
-    {"help", no_argument, NULL, 'h'},
-    {"version", no_argument, NULL, 'V'},
-    {NULL, 0, NULL, 0}
-};
 
 int main (int argc, char *const *argv)
 {
