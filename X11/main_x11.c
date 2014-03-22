@@ -94,6 +94,14 @@ static void window_process_events (game_window_t *window)
     }
 }
 
+/** Check is window isn't closed
+ * @returns non-zero if closed, 0 otherwise
+ */
+static int window_is_exists (game_window_t *window)
+{
+    return window->is_closed == 0;
+}
+
 /** Destroy window and free all related resources
  * @param window window to destroy
  */
@@ -239,7 +247,7 @@ static int modern_run (Display *display, int screen)
         return EXIT_FAILURE;
     }
     */
-    while (!main_window->is_closed) {
+    while (window_is_exists(main_window)) {
         window_process_events (main_window);
         /*game_tick();*/
         glXSwapBuffers (display, context_info.glx_window);
@@ -296,7 +304,7 @@ static int legacy_run (Display *display, int screen)
             return EXIT_FAILURE;
         }
     */
-    while (!main_window->is_closed) {
+    while (window_is_exists(main_window)) {
         window_process_events (main_window);
         /* game_tick(); */
         glXSwapBuffers (display, main_window->xwindow);
