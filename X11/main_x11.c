@@ -29,9 +29,9 @@ typedef struct game_window_t {
     int height;
 } game_window_t;
 
-game_window_t *main_window = NULL;
+static game_window_t *main_window = NULL;
 
-glx_context_info_t context_info = {NULL};
+static glx_context_info_t context_info = {NULL, NULL, NULL, (GLXWindow)NULL};
 
 /** Version of glx */
 static int glx_major, glx_minor;
@@ -44,7 +44,7 @@ static int arb_context_profile = 0;
 static PFNGLXCREATECONTEXTATTRIBSARBPROC glXCreateContextAttribsARB = NULL;
 
 /** The name the program was run with */
-const char *program_name;
+static const char *program_name;
 
 /** License text to show when application is runned with --version flag */
 static const char *version_text =
