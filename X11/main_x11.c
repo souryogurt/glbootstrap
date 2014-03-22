@@ -64,7 +64,7 @@ static struct option const long_options[] = {
 /** Process all pending events
  * @param window events of this window should be processed
  */
-static void process_events (game_window_t *window)
+static void window_process_events (game_window_t *window)
 {
     XConfigureEvent xce;
 
@@ -97,7 +97,7 @@ static void process_events (game_window_t *window)
 /** Destroy window and free all related resources
  * @param window window to destroy
  */
-static int destroy_window (game_window_t *window)
+static int window_destroy (game_window_t *window)
 {
     XDestroyWindow (window->display, window->xwindow);
     XFreeColormap (window->display, window->cmap);
@@ -110,7 +110,7 @@ static int destroy_window (game_window_t *window)
  * @param window the struct that will contain the pointer to new window object
  * @returns 1 if window is created, 0 otherwise
  */
-static int create_window (Display *display, XVisualInfo *vi,
+static int window_create (Display *display, XVisualInfo *vi,
                           game_window_t *window)
 {
     XSetWindowAttributes swa;
@@ -194,7 +194,7 @@ static int modern_run (Display *display, int screen)
         fprintf (stderr, "%s: can't retrieve a visual\n", program_name);
         return EXIT_FAILURE;
     }
-    create_window (display, context_info.visual_info, &main_window);
+    window_create (display, context_info.visual_info, &main_window);
     XFree (context_info.visual_info);
 
     context_info.glx_window = glXCreateWindow (display,
@@ -218,7 +218,7 @@ static int modern_run (Display *display, int screen)
     if (context_info.context == NULL) {
         fprintf (stderr, "%s: can't create OpenGL context\n", program_name);
         glXDestroyWindow (display, context_info.glx_window);
-        destroy_window (&main_window);
+        window_destroy (&main_window);
         return EXIT_FAILURE;
     }
 
@@ -229,12 +229,12 @@ static int modern_run (Display *display, int screen)
         glXMakeContextCurrent(display, 0, 0, 0);
         glXDestroyContext(display, context);
         glXDestroyWindow(display, glx_window);
-        destroy_window(&main_window);
+        window_destroy(&main_window);
         return EXIT_FAILURE;
     }
     */
     while (!main_window.is_closed) {
-        process_events (&main_window);
+        window_process_events (&main_window);
         /*game_tick();*/
         glXSwapBuffers (display, context_info.glx_window);
     }
@@ -242,7 +242,7 @@ static int modern_run (Display *display, int screen)
     glXMakeContextCurrent (display, 0, 0, 0);
     glXDestroyContext (display, context_info.context);
     glXDestroyWindow (display, context_info.glx_window);
-    destroy_window (&main_window);
+    window_destroy (&main_window);
     return EXIT_SUCCESS;
 }
 
@@ -271,14 +271,14 @@ static int legacy_run (Display *display, int screen)
         return EXIT_FAILURE;
     }
 
-    create_window (display, context_info.visual_info, &main_window);
+    window_create (display, context_info.visual_info, &main_window);
     context_info.context = glXCreateContext (display, context_info.visual_info,
                            NULL, True);
     XFree (context_info.visual_info);
 
     if (context_info.context == NULL) {
         fprintf (stderr, "%s: can't create OpenGL context\n", program_name);
-        destroy_window (&main_window);
+        window_destroy (&main_window);
         return EXIT_FAILURE;
     }
     glXMakeCurrent (display, main_window.xwindow, context_info.context);
@@ -286,18 +286,18 @@ static int legacy_run (Display *display, int screen)
         if (!game_init()) {
             glXMakeCurrent(display, 0, 0);
             glXDestroyContext(display, context);
-            destroy_window(&main_window);
+            window_destroy(&main_window);
             return EXIT_FAILURE;
         }
     */
     while (!main_window.is_closed) {
-        process_events (&main_window);
+        window_process_events (&main_window);
         /* game_tick(); */
         glXSwapBuffers (display, main_window.xwindow);
     }
     glXMakeCurrent (display, 0, 0);
     glXDestroyContext (display, context_info.context);
-    destroy_window (&main_window);
+    window_destroy (&main_window);
     return EXIT_SUCCESS;
 }
 
