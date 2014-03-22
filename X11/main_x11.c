@@ -29,7 +29,7 @@ typedef struct game_window_t {
     int height;
 } game_window_t;
 
-game_window_t main_window;
+game_window_t *main_window = NULL;
 
 glx_context_info_t context_info = {NULL};
 
@@ -97,43 +97,49 @@ static void window_process_events (game_window_t *window)
 /** Destroy window and free all related resources
  * @param window window to destroy
  */
-static int window_destroy (game_window_t *window)
+static void window_destroy (game_window_t *window)
 {
-    XDestroyWindow (window->display, window->xwindow);
-    XFreeColormap (window->display, window->cmap);
-    return 1;
+    if (window != NULL) {
+        XDestroyWindow (window->display, window->xwindow);
+        XFreeColormap (window->display, window->cmap);
+        free (window);
+    }
 }
 
 /** Create and display new window
  * @param display The display where window should be created
  * @param vi VisualInfo that should be used to create a window
- * @param window the struct that will contain the pointer to new window object
- * @returns 1 if window is created, 0 otherwise
+ * @returns new window object, NULL otherwise
  */
-static int window_create (Display *display, XVisualInfo *vi,
-                          game_window_t *window)
+static game_window_t *window_create (Display *display, XVisualInfo *vi)
 {
+    const unsigned long valuemask = CWBorderPixel | CWColormap | CWEventMask;
     XSetWindowAttributes swa;
-    Window root = RootWindow (display, vi->screen);
-    window->display = display;
-    window->is_closed = 0;
-    window->width = 0;
-    window->height = 0;
-    window->cmap = XCreateColormap (display, root, vi->visual, AllocNone);
-    swa.colormap = window->cmap;
-    swa.background_pixmap = None;
-    swa.border_pixel = 0;
-    swa.event_mask = StructureNotifyMask;
-    window->xwindow = XCreateWindow (display, RootWindow (display, vi->screen),
-                                     0, 0, 640, 480, 0, vi->depth, InputOutput,
-                                     vi->visual,
-                                     CWBorderPixel | CWColormap | CWEventMask,
-                                     &swa);
-    XStoreName (display, window->xwindow, "OpenGL Window");
-    XMapWindow (display, window->xwindow);
-    window->wm_delete_window = XInternAtom (display, "WM_DELETE_WINDOW", False);
-    XSetWMProtocols (display, window->xwindow, &window->wm_delete_window, 1);
-    return 1;
+    game_window_t *window = (game_window_t *)malloc (sizeof (game_window_t));
+    if (window != NULL) {
+        Window root = RootWindow (display, vi->screen);
+        window->display = display;
+        window->is_closed = 0;
+        window->width = 0;
+        window->height = 0;
+        window->cmap = XCreateColormap (display, root, vi->visual, AllocNone);
+        swa.colormap = window->cmap;
+        swa.background_pixmap = None;
+        swa.border_pixel = 0;
+        swa.event_mask = StructureNotifyMask;
+        window->xwindow = XCreateWindow (display,
+                                         RootWindow (display, vi->screen),
+                                         0, 0, 640, 480, 0, vi->depth,
+                                         InputOutput, vi->visual, valuemask,
+                                         &swa);
+        XStoreName (display, window->xwindow, "OpenGL Window");
+        XMapWindow (display, window->xwindow);
+        window->wm_delete_window = XInternAtom (display, "WM_DELETE_WINDOW",
+                                                False);
+        XSetWMProtocols (display, window->xwindow,
+                         &window->wm_delete_window, 1);
+    }
+    return window;
 }
 
 /** Check that extension is in a list
@@ -194,11 +200,11 @@ static int modern_run (Display *display, int screen)
         fprintf (stderr, "%s: can't retrieve a visual\n", program_name);
         return EXIT_FAILURE;
     }
-    window_create (display, context_info.visual_info, &main_window);
+    main_window = window_create (display, context_info.visual_info);
     XFree (context_info.visual_info);
 
     context_info.glx_window = glXCreateWindow (display,
-                              context_info.best_fbconfig, main_window.xwindow,
+                              context_info.best_fbconfig, main_window->xwindow,
                               NULL);
     if (arb_create_context_extension != 0) {
         int context_attribs[] = {
@@ -218,7 +224,7 @@ static int modern_run (Display *display, int screen)
     if (context_info.context == NULL) {
         fprintf (stderr, "%s: can't create OpenGL context\n", program_name);
         glXDestroyWindow (display, context_info.glx_window);
-        window_destroy (&main_window);
+        window_destroy (main_window);
         return EXIT_FAILURE;
     }
 
@@ -229,12 +235,12 @@ static int modern_run (Display *display, int screen)
         glXMakeContextCurrent(display, 0, 0, 0);
         glXDestroyContext(display, context);
         glXDestroyWindow(display, glx_window);
-        window_destroy(&main_window);
+        window_destroy(main_window);
         return EXIT_FAILURE;
     }
     */
-    while (!main_window.is_closed) {
-        window_process_events (&main_window);
+    while (!main_window->is_closed) {
+        window_process_events (main_window);
         /*game_tick();*/
         glXSwapBuffers (display, context_info.glx_window);
     }
@@ -242,7 +248,7 @@ static int modern_run (Display *display, int screen)
     glXMakeContextCurrent (display, 0, 0, 0);
     glXDestroyContext (display, context_info.context);
     glXDestroyWindow (display, context_info.glx_window);
-    window_destroy (&main_window);
+    window_destroy (main_window);
     return EXIT_SUCCESS;
 }
 
@@ -271,33 +277,33 @@ static int legacy_run (Display *display, int screen)
         return EXIT_FAILURE;
     }
 
-    window_create (display, context_info.visual_info, &main_window);
+    main_window = window_create (display, context_info.visual_info);
     context_info.context = glXCreateContext (display, context_info.visual_info,
                            NULL, True);
     XFree (context_info.visual_info);
 
     if (context_info.context == NULL) {
         fprintf (stderr, "%s: can't create OpenGL context\n", program_name);
-        window_destroy (&main_window);
+        window_destroy (main_window);
         return EXIT_FAILURE;
     }
-    glXMakeCurrent (display, main_window.xwindow, context_info.context);
+    glXMakeCurrent (display, main_window->xwindow, context_info.context);
     /*
         if (!game_init()) {
             glXMakeCurrent(display, 0, 0);
             glXDestroyContext(display, context);
-            window_destroy(&main_window);
+            window_destroy(main_window);
             return EXIT_FAILURE;
         }
     */
-    while (!main_window.is_closed) {
-        window_process_events (&main_window);
+    while (!main_window->is_closed) {
+        window_process_events (main_window);
         /* game_tick(); */
-        glXSwapBuffers (display, main_window.xwindow);
+        glXSwapBuffers (display, main_window->xwindow);
     }
     glXMakeCurrent (display, 0, 0);
     glXDestroyContext (display, context_info.context);
-    window_destroy (&main_window);
+    window_destroy (main_window);
     return EXIT_SUCCESS;
 }
 
