@@ -248,7 +248,7 @@ static int modern_run (Display *display, int screen)
         return EXIT_FAILURE;
     }
     */
-    while (window_is_exists(main_window)) {
+    while (window_is_exists (main_window)) {
         window_process_events (main_window);
         /*game_tick();*/
         glXSwapBuffers (display, context_info.glx_window);
@@ -305,7 +305,7 @@ static int legacy_run (Display *display, int screen)
             return EXIT_FAILURE;
         }
     */
-    while (window_is_exists(main_window)) {
+    while (window_is_exists (main_window)) {
         window_process_events (main_window);
         /* game_tick(); */
         glXSwapBuffers (display, main_window->xwindow);
