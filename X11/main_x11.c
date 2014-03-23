@@ -176,12 +176,12 @@ static int is_extension_supported (const char *ext_string, const char *ext)
 /** Print usage information */
 static void print_usage (void)
 {
-    printf ("Usage: %s [OPTION]...\n", program_name);
-    printf ("Displays OpenGL animation in X11 window\n\n");
-    printf ("Options:\n");
-    printf ("  -h, --help     display this help and exit\n");
-    printf ("  -V, --version  output version information and exit\n");
-    printf ("\nReport bugs to: <" PACKAGE_BUGREPORT ">\n");
+    printf ("Usage: %s [OPTION]...\n"
+            "Displays OpenGL animation in X11 window\n\n"
+            "Options:\n"
+            "  -h, --help     display this help and exit\n"
+            "  -V, --version  output version information and exit\n"
+            "\nReport bugs to: <" PACKAGE_BUGREPORT ">\n", program_name);
 }
 
 /** Run OpenGL application on a system with a GLX >= 1.3
