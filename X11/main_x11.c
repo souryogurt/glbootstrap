@@ -27,6 +27,7 @@ typedef struct game_window_t {
     int is_closed;
     int width;
     int height;
+    char padding[4];
 } game_window_t;
 
 static game_window_t *main_window = NULL;
