@@ -173,6 +173,17 @@ static int is_extension_supported (const char *ext_string, const char *ext)
     return 0;
 }
 
+/** Print usage information */
+static void print_usage (void)
+{
+    printf ("Usage: %s [OPTION]...\n", program_name);
+    printf ("Displays OpenGL animation in X11 window\n\n");
+    printf ("Options:\n");
+    printf ("  -h, --help     display this help and exit\n");
+    printf ("  -V, --version  output version information and exit\n");
+    printf ("\nReport bugs to: <" PACKAGE_BUGREPORT ">\n");
+}
+
 /** Run OpenGL application on a system with a GLX >= 1.3
  * @param display The display that where application should work
  * @param screen The number of screen where application should run
@@ -347,15 +358,27 @@ static int initialize_glx (Display *display, int screen)
     return 1;
 }
 
-/** Print usage information */
-static void print_usage (void)
+/** Parse command-line arguments
+ * @param argc number of arguments passed to main()
+ * @param argv array of arguments passed to main()
+ */
+static void parse_args (int argc, char *const *argv)
 {
-    printf ("Usage: %s [OPTION]...\n", program_name);
-    printf ("Displays OpenGL animation in X11 window\n\n");
-    printf ("Options:\n");
-    printf ("  -h, --help     display this help and exit\n");
-    printf ("  -V, --version  output version information and exit\n");
-    printf ("\nReport bugs to: <" PACKAGE_BUGREPORT ">\n");
+    int opt;
+    program_name = argv[0];
+    while ((opt = getopt_long (argc, argv, "hV", long_options, NULL)) != -1) {
+        switch (opt) {
+            case 'h':
+                print_usage();
+                exit (EXIT_SUCCESS);
+            case 'V':
+                printf ("%s\n", version_text);
+                exit (EXIT_SUCCESS);
+            default:
+                print_usage();
+                exit (EXIT_FAILURE);
+        }
+    }
 }
 
 int main (int argc, char *const *argv)
@@ -363,21 +386,8 @@ int main (int argc, char *const *argv)
     int exit_code = EXIT_FAILURE;
     int screen = 0;
     Display *display = NULL;
-    int opt;
-    program_name = argv[0];
-    while ((opt = getopt_long (argc, argv, "hV", long_options, NULL)) != -1) {
-        switch (opt) {
-            case 'h':
-                print_usage();
-                return EXIT_SUCCESS;
-            case 'V':
-                printf ("%s\n", version_text);
-                return EXIT_SUCCESS;
-            default:
-                print_usage();
-                return EXIT_FAILURE;
-        }
-    }
+
+    parse_args (argc, argv);
 
     display = XOpenDisplay (NULL);
     if (display == NULL) {
