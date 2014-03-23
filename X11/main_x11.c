@@ -36,6 +36,8 @@ static glx_context_info_t context_info = {NULL, NULL, NULL, (GLXWindow)NULL};
 
 /** Version of glx */
 static int glx_major, glx_minor;
+/** Flag that indicates that we have legacy GLX version (GLX <=1.2) */
+static int glx_legacy = 0;
 
 /* GLX_ARB_create_context */
 static int arb_create_context_extension = 0;
@@ -184,148 +186,6 @@ static void print_usage (void)
             "\nReport bugs to: <" PACKAGE_BUGREPORT ">\n", program_name);
 }
 
-/** Run OpenGL application on a system with a GLX >= 1.3
- * @param display The display that where application should work
- * @param screen The number of screen where application should run
- * @returns exit code of application
- */
-static int modern_run (Display *display, int screen)
-{
-    static int attribs[] = {
-        GLX_X_RENDERABLE, True,
-        GLX_DRAWABLE_TYPE, GLX_WINDOW_BIT,
-        GLX_RENDER_TYPE, GLX_RGBA_BIT,
-        GLX_RED_SIZE, 8,
-        GLX_GREEN_SIZE, 8,
-        GLX_BLUE_SIZE, 8,
-        GLX_ALPHA_SIZE, 8,
-        GLX_DEPTH_SIZE, 24,
-        GLX_STENCIL_SIZE, 8,
-        GLX_DOUBLEBUFFER, True,
-        None
-    };
-    int fbcount;
-    GLXFBConfig *fbc = glXChooseFBConfig (display, screen, attribs, &fbcount);
-    if (fbc == NULL) {
-        fprintf (stderr, "%s: can't retrieve a framebuffer config\n",
-                 program_name);
-        return EXIT_FAILURE;
-    }
-    context_info.best_fbconfig = fbc[0];
-    XFree (fbc);
-    context_info.visual_info = glXGetVisualFromFBConfig (display,
-                               context_info.best_fbconfig);
-    if (context_info.visual_info == NULL) {
-        fprintf (stderr, "%s: can't retrieve a visual\n", program_name);
-        return EXIT_FAILURE;
-    }
-    main_window = window_create (display, context_info.visual_info);
-    XFree (context_info.visual_info);
-
-    context_info.glx_window = glXCreateWindow (display,
-                              context_info.best_fbconfig, main_window->xwindow,
-                              NULL);
-    if (arb_create_context_extension != 0) {
-        int context_attribs[] = {
-            GLX_CONTEXT_MAJOR_VERSION_ARB, 1,
-            GLX_CONTEXT_MINOR_VERSION_ARB, 0,
-            None
-        };
-        context_info.context = glXCreateContextAttribsARB (display,
-                               context_info.best_fbconfig, NULL, True,
-                               context_attribs);
-    } else {
-        context_info.context = glXCreateNewContext (display,
-                               context_info.best_fbconfig, GLX_RGBA_TYPE, NULL,
-                               True);
-    }
-
-    if (context_info.context == NULL) {
-        fprintf (stderr, "%s: can't create OpenGL context\n", program_name);
-        glXDestroyWindow (display, context_info.glx_window);
-        window_destroy (main_window);
-        return EXIT_FAILURE;
-    }
-
-    glXMakeContextCurrent (display, context_info.glx_window,
-                           context_info.glx_window, context_info.context);
-
-    /*if (!game_init()) {
-        glXMakeContextCurrent(display, 0, 0, 0);
-        glXDestroyContext(display, context);
-        glXDestroyWindow(display, glx_window);
-        window_destroy(main_window);
-        return EXIT_FAILURE;
-    }
-    */
-    while (window_is_exists (main_window)) {
-        window_process_events (main_window);
-        /*game_tick();*/
-        glXSwapBuffers (display, context_info.glx_window);
-    }
-
-    glXMakeContextCurrent (display, 0, 0, 0);
-    glXDestroyContext (display, context_info.context);
-    glXDestroyWindow (display, context_info.glx_window);
-    window_destroy (main_window);
-    return EXIT_SUCCESS;
-}
-
-/** Run OpenGL application on a system with a GLX version < 1.3
- * @param display The display that where application should work
- * @param screen The number of screen where application should run
- * @returns exit code of application
- */
-static int legacy_run (Display *display, int screen)
-{
-    static int attribs[] = {
-        GLX_USE_GL, True,
-        GLX_RGBA, True,
-        GLX_RED_SIZE, 8,
-        GLX_GREEN_SIZE, 8,
-        GLX_BLUE_SIZE, 8,
-        GLX_ALPHA_SIZE, 8,
-        GLX_DEPTH_SIZE, 24,
-        GLX_STENCIL_SIZE, 8,
-        GLX_DOUBLEBUFFER, True,
-        None
-    };
-    context_info.visual_info = glXChooseVisual (display, screen, attribs);
-    if (context_info.visual_info == NULL) {
-        fprintf (stderr, "%s: can't retrieve a visual\n", program_name);
-        return EXIT_FAILURE;
-    }
-
-    main_window = window_create (display, context_info.visual_info);
-    context_info.context = glXCreateContext (display, context_info.visual_info,
-                           NULL, True);
-    XFree (context_info.visual_info);
-
-    if (context_info.context == NULL) {
-        fprintf (stderr, "%s: can't create OpenGL context\n", program_name);
-        window_destroy (main_window);
-        return EXIT_FAILURE;
-    }
-    glXMakeCurrent (display, main_window->xwindow, context_info.context);
-    /*
-        if (!game_init()) {
-            glXMakeCurrent(display, 0, 0);
-            glXDestroyContext(display, context);
-            window_destroy(main_window);
-            return EXIT_FAILURE;
-        }
-    */
-    while (window_is_exists (main_window)) {
-        window_process_events (main_window);
-        /* game_tick(); */
-        glXSwapBuffers (display, main_window->xwindow);
-    }
-    glXMakeCurrent (display, 0, 0);
-    glXDestroyContext (display, context_info.context);
-    window_destroy (main_window);
-    return EXIT_SUCCESS;
-}
-
 /** Check GLX version and available extensions
  * @param display The display where application runs
  * @param screen the screen number where application runs
@@ -343,6 +203,8 @@ static int initialize_glx (Display *display, int screen)
     if ((glx_major < 1) || ((glx_major == 1) && (glx_minor < 2))) {
         fprintf (stderr, "%s: atleast GLX 1.2 is required\n", program_name);
         return 0;
+    } else if ((glx_minor == 2) && (glx_major == 1)) {
+        glx_legacy = 1;
     }
 
     /* Check available GLX extensions */
@@ -383,7 +245,20 @@ static void parse_args (int argc, char *const *argv)
 
 int main (int argc, char *const *argv)
 {
-    int exit_code = EXIT_FAILURE;
+    static const int attribs[] = {
+        GLX_X_RENDERABLE, True,
+        GLX_DRAWABLE_TYPE, GLX_WINDOW_BIT,
+        GLX_RENDER_TYPE, GLX_RGBA_BIT,
+        GLX_RED_SIZE, 8,
+        GLX_GREEN_SIZE, 8,
+        GLX_BLUE_SIZE, 8,
+        GLX_ALPHA_SIZE, 8,
+        GLX_DEPTH_SIZE, 24,
+        GLX_STENCIL_SIZE, 8,
+        GLX_DOUBLEBUFFER, True,
+        None
+    };
+    int fbcount;
     int screen = 0;
     Display *display = NULL;
 
@@ -402,12 +277,105 @@ int main (int argc, char *const *argv)
         return EXIT_FAILURE;
     }
 
-    if ((glx_major == 1) && (glx_minor == 2)) {
-        exit_code = legacy_run (display, screen);
-    } else if ((glx_major > 1) || ((glx_major == 1) && (glx_minor >= 3))) {
-        exit_code = modern_run (display, screen);
+    /* Getting visual info to create window */
+    if (!glx_legacy) {
+        GLXFBConfig *fbc = glXChooseFBConfig (display, screen, attribs,
+                                              &fbcount);
+        if (fbc == NULL) {
+            fprintf (stderr, "%s: can't retrieve a framebuffer config\n",
+                     program_name);
+            return EXIT_FAILURE;
+        }
+        context_info.best_fbconfig = fbc[0];
+        XFree (fbc);
+        context_info.visual_info = glXGetVisualFromFBConfig (display,
+                                   context_info.best_fbconfig);
+    } else {
+        /**TODO: convert attribs to GLX1.2 attribs list */
+        static int legacy_attribs[] = {
+            GLX_USE_GL, True,
+            GLX_RGBA, True,
+            GLX_RED_SIZE, 8,
+            GLX_GREEN_SIZE, 8,
+            GLX_BLUE_SIZE, 8,
+            GLX_ALPHA_SIZE, 8,
+            GLX_DEPTH_SIZE, 24,
+            GLX_STENCIL_SIZE, 8,
+            GLX_DOUBLEBUFFER, True,
+            None
+        };
+        context_info.visual_info = glXChooseVisual (display, screen,
+                                   legacy_attribs);
+    }
+    if (context_info.visual_info == NULL) {
+        fprintf (stderr, "%s: can't retrieve a visual\n", program_name);
+        return EXIT_FAILURE;
     }
 
+    main_window = window_create (display, context_info.visual_info);
+
+    /* Creating openGL context */
+    if (!glx_legacy) {
+        context_info.glx_window = glXCreateWindow (display,
+                                  context_info.best_fbconfig,
+                                  main_window->xwindow, NULL);
+        if (arb_create_context_extension != 0) {
+            int context_attribs[] = {
+                GLX_CONTEXT_MAJOR_VERSION_ARB, 1,
+                GLX_CONTEXT_MINOR_VERSION_ARB, 0,
+                None
+            };
+            context_info.context = glXCreateContextAttribsARB (display,
+                                   context_info.best_fbconfig, NULL, True,
+                                   context_attribs);
+        } else {
+            context_info.context = glXCreateNewContext (display,
+                                   context_info.best_fbconfig, GLX_RGBA_TYPE,
+                                   NULL, True);
+        }
+    } else {
+        context_info.context = glXCreateContext (display,
+                               context_info.visual_info, NULL, True);
+    }
+    XFree (context_info.visual_info);
+    if (context_info.context == NULL) {
+        fprintf (stderr, "%s: can't create OpenGL context\n", program_name);
+        if (!glx_legacy) {
+            glXDestroyWindow (display, context_info.glx_window);
+        }
+        window_destroy (main_window);
+        return EXIT_FAILURE;
+    }
+
+    /* Make context current */
+    if (!glx_legacy) {
+        glXMakeContextCurrent (display, context_info.glx_window,
+                               context_info.glx_window, context_info.context);
+    } else {
+        glXMakeCurrent (display, main_window->xwindow, context_info.context);
+    }
+
+    /* Main loop */
+    while (window_is_exists (main_window)) {
+        window_process_events (main_window);
+        /*game_tick();*/
+        if (!glx_legacy) {
+            glXSwapBuffers (display, context_info.glx_window);
+        } else {
+            glXSwapBuffers (display, main_window->xwindow);
+        }
+    }
+    /* Destroy and free all allocated data */
+    if (!glx_legacy) {
+        glXMakeContextCurrent (display, 0, 0, 0);
+    } else {
+        glXMakeCurrent (display, 0, 0);
+    }
+    glXDestroyContext (display, context_info.context);
+    if (!glx_legacy) {
+        glXDestroyWindow (display, context_info.glx_window);
+    }
+    window_destroy (main_window);
     XCloseDisplay (display);
-    return exit_code;
+    return EXIT_SUCCESS;
 }
