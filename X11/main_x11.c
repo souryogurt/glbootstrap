@@ -120,6 +120,14 @@ static void window_destroy (game_window_t *window)
     }
 }
 
+/** Get native window handle of game window
+ * @param window target game window object
+ */
+static Window window_get_native (game_window_t *window)
+{
+    return window->xwindow;
+}
+
 /** Create and display new window
  * @param display The display where window should be created
  * @param vi VisualInfo that should be used to create a window
@@ -498,7 +506,7 @@ int main (int argc, char *const *argv)
     XFree (visual_info);
 
     surface = ugl_create_window_render_surface (ugl, ugl_config,
-              main_window->xwindow);
+              (UGLNativeWindow)window_get_native (main_window));
     if (surface == NULL) {
         fprintf (stderr, "%s: can't create rendering surface\n", program_name);
         window_destroy (main_window);
