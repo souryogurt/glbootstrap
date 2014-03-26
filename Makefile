@@ -1,5 +1,5 @@
 CC?=gcc
-CFLAGS?=--std=c89 -Og -g -funsafe-loop-optimizations $(C_NINJA)
+CFLAGS?=--std=c89 -O0 -g -funsafe-loop-optimizations $(C_NINJA)
 glbootstrap:	main_x11.o
 	$(CC) $(CFLAGS) -L/usr/local/lib -o glbootstrap main_x11.o -lX11 -lGL
 main_x11.o:	X11/main_x11.c
