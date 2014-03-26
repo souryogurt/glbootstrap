@@ -340,9 +340,9 @@ static UGLFrameBufferConfig *ugl_get_framebuffer_config (const UGL *ugl,
         const int *attributes)
 {
     UGLFrameBufferConfig *config = NULL;
-    GLXFBConfig *fbc = NULL;
     int fbcount = 0;
     if (!ugl->is_legacy) {
+        GLXFBConfig *fbc = NULL;
         fbc = glXChooseFBConfig (ugl->display, ugl->screen, attributes,
                                  &fbcount);
         if (fbc != NULL) {
@@ -377,7 +377,6 @@ static UGLFrameBufferConfig *ugl_get_framebuffer_config (const UGL *ugl,
 static UGL *ugl_create (Display *display, int screen)
 {
     UGL *ugl;
-    const char *extensions;
     int major_version;
     int minor_version;
     /* Check the glx version */
@@ -390,6 +389,7 @@ static UGL *ugl_create (Display *display, int screen)
 
     ugl = (UGL *) malloc (sizeof (UGL));
     if (ugl != NULL) {
+        const char *extensions;
         ugl->display = display;
         ugl->screen = screen;
         ugl->glx_major = major_version;
