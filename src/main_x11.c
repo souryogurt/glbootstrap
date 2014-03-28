@@ -378,7 +378,7 @@ static UGLFrameBufferConfig *ugl_get_framebuffer_config (const UGL *ugl,
             GLX_GREEN_SIZE, 8,
             GLX_BLUE_SIZE, 8,
             GLX_ALPHA_SIZE, 8,
-            GLX_DEPTH_SIZE, 24,
+            GLX_DEPTH_SIZE, 16,
             GLX_STENCIL_SIZE, 8,
             GLX_DOUBLEBUFFER, True,
             None
@@ -465,7 +465,7 @@ int main (int argc, char *const *argv)
         GLX_GREEN_SIZE, 8,
         GLX_BLUE_SIZE, 8,
         GLX_ALPHA_SIZE, 8,
-        GLX_DEPTH_SIZE, 24,
+        GLX_DEPTH_SIZE, 16,
         GLX_STENCIL_SIZE, 8,
         GLX_DOUBLEBUFFER, True,
         None
