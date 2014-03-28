@@ -219,6 +219,7 @@ static void print_usage (void)
  */
 static void ugl_free (UGL *ugl)
 {
+    XCloseDisplay (ugl->display);
     free (ugl);
 }
 
@@ -394,20 +395,26 @@ static UGLFrameBufferConfig *ugl_get_framebuffer_config (const UGL *ugl,
 }
 
 /** Creates universal interface to OpenGL subsystem
- * @param display The display where application runs
- * @param screen the screen number where application runs
+ * @param display_id The display where application runs
  * @returns interface object, NULL otherwise
  */
-static UGL *ugl_create (Display *display, int screen)
+static UGL *ugl_create (void *display_id)
 {
     UGL *ugl;
     int major_version;
     int minor_version;
+
+    Display *display = XOpenDisplay ((char *)display_id);
+    if (display == NULL) {
+        return NULL;
+    }
     /* Check the glx version */
     if (glXQueryVersion (display, &major_version, &minor_version) == False) {
+        XCloseDisplay (display);
         return NULL;
     }
     if ((major_version < 1) || ((major_version == 1) && (minor_version < 2))) {
+        XCloseDisplay (display);
         return NULL;
     }
 
@@ -415,12 +422,12 @@ static UGL *ugl_create (Display *display, int screen)
     if (ugl != NULL) {
         const char *extensions;
         ugl->display = display;
-        ugl->screen = screen;
+        ugl->screen = DefaultScreen (display);
         ugl->glx_major = major_version;
         ugl->glx_minor = minor_version;
         ugl->is_legacy = ((minor_version == 2) && (major_version == 1));
         /* Check available GLX extensions */
-        extensions = glXQueryExtensionsString (display, screen);
+        extensions = glXQueryExtensionsString (ugl->display, ugl->screen);
 
         if (is_extension_supported (extensions, "GLX_ARB_create_context") != 0) {
             ugl->glXCreateContextAttribsARB = (PFNGLXCREATECONTEXTATTRIBSARBPROC)
@@ -431,6 +438,8 @@ static UGL *ugl_create (Display *display, int screen)
             ugl->glXCreateContextAttribsARB = NULL;
             ugl->is_arb_context_profile = 0;
         }
+    } else {
+        XCloseDisplay (display);
     }
 
     return ugl;
@@ -474,7 +483,6 @@ int main (int argc, char *const *argv)
         GLX_DOUBLEBUFFER, True,
         None
     };
-    int screen = 0;
     UGL *ugl = NULL;
     UGLFrameBufferConfig *ugl_config = NULL;
     UGLRenderSurface *surface = NULL;
@@ -483,18 +491,10 @@ int main (int argc, char *const *argv)
 
     parse_args (argc, argv);
 
-    display = XOpenDisplay (NULL);
-    if (display == NULL) {
-        fprintf (stderr, "%s: can't connect to X server\n", program_name);
+    if ((ugl = ugl_create (NULL)) == NULL) {
         return EXIT_FAILURE;
     }
 
-    screen = DefaultScreen (display);
-
-    if ((ugl = ugl_create (display, screen)) == NULL) {
-        XCloseDisplay (display);
-        return EXIT_FAILURE;
-    }
     if ((ugl_config = ugl_get_framebuffer_config (ugl, attribs)) == NULL) {
         fprintf (stderr, "%s: can't retrieve a framebuffer config\n",
                  program_name);
@@ -509,11 +509,18 @@ int main (int argc, char *const *argv)
         return EXIT_FAILURE;
     }
 
+    display = XOpenDisplay (NULL);
+    if (display == NULL) {
+        fprintf (stderr, "%s: can't connect to X server\n", program_name);
+        return EXIT_FAILURE;
+    }
+
     main_window = window_create (display, "OpenGL Window", 640, 480, visual_id);
     if (main_window == NULL) {
         fprintf (stderr, "%s: can't create game window\n", program_name);
         ugl_free_framebuffer_config (ugl, ugl_config);
         ugl_free (ugl);
+        XCloseDisplay (display);
         return EXIT_FAILURE;
     }
 
@@ -524,6 +531,7 @@ int main (int argc, char *const *argv)
         window_destroy (main_window);
         ugl_free_framebuffer_config (ugl, ugl_config);
         ugl_free (ugl);
+        XCloseDisplay (display);
         return EXIT_FAILURE;
     }
     ugl_make_current (ugl, surface);
