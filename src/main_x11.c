@@ -130,10 +130,15 @@ static Window window_get_native (game_window_t *window)
 
 /** Create and display new window
  * @param display The display where window should be created
+ * @param caption The caption of window
+ * @param width The width of the window
+ * @param height The height of the window
  * @param visual_id VisualID of Visual that should be used to create a window
  * @returns new window object, NULL otherwise
  */
-static game_window_t *window_create (Display *display, VisualID visual_id)
+static game_window_t *window_create (Display *display, const char *caption,
+                                     unsigned int width, unsigned int height,
+                                     VisualID visual_id)
 {
     int num_visuals;
     XVisualInfo *vi = NULL;
@@ -162,10 +167,10 @@ static game_window_t *window_create (Display *display, VisualID visual_id)
         swa.event_mask = StructureNotifyMask;
         window->xwindow = XCreateWindow (display,
                                          RootWindow (display, vi->screen),
-                                         0, 0, 640, 480, 0, vi->depth,
+                                         0, 0, width, height, 0, vi->depth,
                                          InputOutput, vi->visual, valuemask,
                                          &swa);
-        XStoreName (display, window->xwindow, "OpenGL Window");
+        XStoreName (display, window->xwindow, caption);
         XMapWindow (display, window->xwindow);
         window->wm_delete_window = XInternAtom (display, "WM_DELETE_WINDOW",
                                                 False);
@@ -505,7 +510,7 @@ int main (int argc, char *const *argv)
         return EXIT_FAILURE;
     }
 
-    main_window = window_create (display, visual_id);
+    main_window = window_create (display, "OpenGL Window", 640, 480, visual_id);
     if (main_window == NULL) {
         fprintf (stderr, "%s: can't create game window\n", program_name);
         ugl_free_framebuffer_config (ugl, ugl_config);
