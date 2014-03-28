@@ -130,15 +130,26 @@ static Window window_get_native (game_window_t *window)
 
 /** Create and display new window
  * @param display The display where window should be created
- * @param vi VisualInfo that should be used to create a window
+ * @param visual_id VisualID of Visual that should be used to create a window
  * @returns new window object, NULL otherwise
  */
-static game_window_t *window_create (Display *display, XVisualInfo *vi)
+static game_window_t *window_create (Display *display, VisualID visual_id)
 {
-    const unsigned long valuemask = CWBorderPixel | CWColormap | CWEventMask;
-    XSetWindowAttributes swa;
-    game_window_t *window = (game_window_t *)malloc (sizeof (game_window_t));
+    int num_visuals;
+    XVisualInfo *vi = NULL;
+    game_window_t *window = NULL;
+    XVisualInfo vi_template;
+    vi_template.visualid = visual_id;
+    vi = XGetVisualInfo (display, VisualIDMask, &vi_template, &num_visuals);
+    if (vi == NULL) {
+        return NULL;
+    }
+
+    window = (game_window_t *)malloc (sizeof (game_window_t));
     if (window != NULL) {
+        const unsigned long valuemask = CWBorderPixel | CWColormap |
+                                        CWEventMask;
+        XSetWindowAttributes swa;
         Window root = RootWindow (display, vi->screen);
         window->display = display;
         window->is_closed = 0;
@@ -161,6 +172,7 @@ static game_window_t *window_create (Display *display, XVisualInfo *vi)
         XSetWMProtocols (display, window->xwindow,
                          &window->wm_delete_window, 1);
     }
+    XFree (vi);
     return window;
 }
 
@@ -463,9 +475,6 @@ int main (int argc, char *const *argv)
     UGLFrameBufferConfig *ugl_config = NULL;
     UGLRenderSurface *surface = NULL;
     VisualID visual_id;
-    XVisualInfo *visual_info = NULL;
-    XVisualInfo visual_info_template;
-    int num_visuals;
     Display *display = NULL;
 
     parse_args (argc, argv);
@@ -488,22 +497,21 @@ int main (int argc, char *const *argv)
         ugl_free (ugl);
         return EXIT_FAILURE;
     }
-    if (ugl_get_config_attribute (ugl, ugl_config, UGL_NATIVE_VISUAL_ID,
-                                  &visual_id)) {
-        memset (&visual_info_template, 0, sizeof (visual_info_template));
-        visual_info_template.visualid = visual_id;
-        visual_info = XGetVisualInfo (display, VisualIDMask,
-                                      &visual_info_template, &num_visuals);
-    }
-    if (visual_info == NULL) {
+    if (!ugl_get_config_attribute (ugl, ugl_config, UGL_NATIVE_VISUAL_ID,
+                                   &visual_id)) {
         fprintf (stderr, "%s: can't retrieve a visual\n", program_name);
         ugl_free_framebuffer_config (ugl, ugl_config);
         ugl_free (ugl);
         return EXIT_FAILURE;
     }
 
-    main_window = window_create (display, visual_info);
-    XFree (visual_info);
+    main_window = window_create (display, visual_id);
+    if (main_window == NULL) {
+        fprintf (stderr, "%s: can't create game window\n", program_name);
+        ugl_free_framebuffer_config (ugl, ugl_config);
+        ugl_free (ugl);
+        return EXIT_FAILURE;
+    }
 
     surface = ugl_create_window_render_surface (ugl, ugl_config,
               (UGLNativeWindow)window_get_native (main_window));
