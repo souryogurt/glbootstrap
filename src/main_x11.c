@@ -271,11 +271,10 @@ static int ugl_make_current (const UGL *ugl, const UGLRenderSurface *surface)
     }
     /* Make context current */
     if (!ugl->is_legacy) {
-        glXMakeContextCurrent (ugl->display, drawable, drawable, context);
-    } else {
-        glXMakeCurrent (ugl->display, drawable, context);
+        return glXMakeContextCurrent (ugl->display, drawable, drawable,
+                                      context) == True;
     }
-    return 1;
+    return glXMakeCurrent (ugl->display, drawable, context) == True;
 }
 
 /** Create render surface assosiated with window
