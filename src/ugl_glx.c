@@ -223,7 +223,7 @@ UGLFrameBufferConfig *ugl_choose_framebuffer_config (const UGL *ugl,
         memcpy (fb_attributes, legacy_attribs, sizeof (legacy_attribs));
         ugl_convert_to_fb_attributes (&fb_attributes[6], attributes);
         config = (UGLFrameBufferConfig *)
-                 glXChooseVisual (ugl->display, ugl->screen, legacy_attribs);
+                 glXChooseVisual (ugl->display, ugl->screen, fb_attributes);
     }
     return config;
 }
