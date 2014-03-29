@@ -169,6 +169,25 @@ static void print_usage (void)
             "\nReport bugs to: <" PACKAGE_BUGREPORT ">\n", program_name);
 }
 
+/** Print configuration of selected framebuffer
+ * @param ugl pointer to universal OpenGL interface object
+ * @param ugl_config pointer to framebuffer configuration object
+ */
+static void print_framebuffer_configuration (const UGL *ugl,
+        UGLFrameBufferConfig *ugl_config)
+{
+    int success;
+    unsigned int value;
+    printf ("Framebuffer configuration:\n");
+    success = ugl_get_config_attribute (ugl, ugl_config, UGL_NATIVE_VISUAL_ID,
+                                        &value);
+    if (success) {
+        printf ("  VisualID: 0x%03X\n", value);
+    } else {
+        printf ("  VisualID: Unknown\n");
+    }
+}
+
 /** Parse command-line arguments
  * @param argc number of arguments passed to main()
  * @param argv array of arguments passed to main()
@@ -237,8 +256,7 @@ int main (int argc, char *const *argv)
     }
 
     if (verbose) {
-        fprintf (stdout, "%s: VisualID: 0x%03X\n", program_name,
-                (unsigned int)visual_id);
+        print_framebuffer_configuration (ugl, ugl_config);
     }
 
     display = XOpenDisplay (NULL);
