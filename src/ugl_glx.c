@@ -136,12 +136,15 @@ int ugl_get_config_attribute (const UGL *ugl, UGLFrameBufferConfig *config,
         case UGL_ALPHA_SIZE:
             result = glXGetConfig (ugl->display, info, GLX_ALPHA_SIZE,
                                    (int *) value) == Success;
+            break;
         case UGL_DEPTH_SIZE:
             result = glXGetConfig (ugl->display, info, GLX_DEPTH_SIZE,
                                    (int *) value) == Success;
+            break;
         case UGL_STENCIL_SIZE:
             result = glXGetConfig (ugl->display, info, GLX_STENCIL_SIZE,
                                    (int *) value) == Success;
+            break;
         default:
             result = 0;
     }
