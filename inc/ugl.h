@@ -15,6 +15,12 @@ typedef struct UGLRenderSurface UGLRenderSurface;
 typedef Window UGLNativeWindow;
 #endif
 
+#define UGL_ALPHA_SIZE 0x3021
+#define UGL_BLUE_SIZE 0x3022
+#define UGL_GREEN_SIZE 0x3023
+#define UGL_RED_SIZE 0x3024
+#define UGL_DEPTH_SIZE 0x3025
+#define UGL_STENCIL_SIZE 0x3026
 #define UGL_NATIVE_VISUAL_ID 0x302E
 
 #ifdef __cplusplus

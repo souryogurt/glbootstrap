@@ -105,24 +105,51 @@ UGLRenderSurface *ugl_create_window_render_surface (const UGL *ugl,
 int ugl_get_config_attribute (const UGL *ugl, UGLFrameBufferConfig *config,
                               unsigned int attribute, void *value)
 {
-    if (attribute == UGL_NATIVE_VISUAL_ID) {
-        XVisualInfo *info = NULL;
-        VisualID *id = (VisualID *)value;
-        if (!ugl->is_legacy) {
-            info = glXGetVisualFromFBConfig (ugl->display, (GLXFBConfig)config);
-            if (info != NULL) {
-                *id = info->visualid;
-                XFree (info);
-            } else {
-                return 0;
-            }
-        } else {
-            info = (XVisualInfo *)config;
-            *id = info->visualid;
+    int result = 0;
+    XVisualInfo *info = NULL;
+    if (!ugl->is_legacy) {
+        info = glXGetVisualFromFBConfig (ugl->display, (GLXFBConfig)config);
+        if (info == NULL) {
+            return 0;
         }
-        return 1;
+    } else {
+        info = (XVisualInfo *)config;
     }
-    return 0;
+
+    switch (attribute) {
+        case UGL_NATIVE_VISUAL_ID:
+            * ((VisualID *)value) = info->visualid;
+            result = 1;
+            break;
+        case UGL_RED_SIZE:
+            result = glXGetConfig (ugl->display, info, GLX_RED_SIZE,
+                                   (int *) value) == Success;
+            break;
+        case UGL_GREEN_SIZE:
+            result = glXGetConfig (ugl->display, info, GLX_GREEN_SIZE,
+                                   (int *) value) == Success;
+            break;
+        case UGL_BLUE_SIZE:
+            result = glXGetConfig (ugl->display, info, GLX_BLUE_SIZE,
+                                   (int *) value) == Success;
+            break;
+        case UGL_ALPHA_SIZE:
+            result = glXGetConfig (ugl->display, info, GLX_ALPHA_SIZE,
+                                   (int *) value) == Success;
+        case UGL_DEPTH_SIZE:
+            result = glXGetConfig (ugl->display, info, GLX_DEPTH_SIZE,
+                                   (int *) value) == Success;
+        case UGL_STENCIL_SIZE:
+            result = glXGetConfig (ugl->display, info, GLX_STENCIL_SIZE,
+                                   (int *) value) == Success;
+        default:
+            result = 0;
+    }
+
+    if (!ugl->is_legacy) {
+        XFree (info);
+    }
+    return result;
 }
 
 UGLFrameBufferConfig *ugl_choose_framebuffer_config (const UGL *ugl,

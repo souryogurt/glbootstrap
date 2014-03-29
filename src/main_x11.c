@@ -182,9 +182,51 @@ static void print_framebuffer_configuration (const UGL *ugl,
     success = ugl_get_config_attribute (ugl, ugl_config, UGL_NATIVE_VISUAL_ID,
                                         &value);
     if (success) {
-        printf ("  VisualID: 0x%03X\n", value);
+        printf ("  VisualID:\t 0x%03X\n", value);
     } else {
-        printf ("  VisualID: Unknown\n");
+        printf ("  VisualID:\t Unknown\n");
+    }
+
+    success = ugl_get_config_attribute (ugl, ugl_config, UGL_RED_SIZE, &value);
+    if (success) {
+        printf ("  Red Size:\t %u\n", value);
+    } else {
+        printf ("  Red Size:\t Unknown\n");
+    }
+    success = ugl_get_config_attribute (ugl, ugl_config, UGL_GREEN_SIZE,
+                                        &value);
+    if (success) {
+        printf ("  Green Size:\t %u\n", value);
+    } else {
+        printf ("  Green Size:\t Unknown\n");
+    }
+    success = ugl_get_config_attribute (ugl, ugl_config, UGL_BLUE_SIZE,
+                                        &value);
+    if (success) {
+        printf ("  Blue Size:\t %u\n", value);
+    } else {
+        printf ("  Blue Size:\t Unknown\n");
+    }
+    success = ugl_get_config_attribute (ugl, ugl_config, UGL_ALPHA_SIZE,
+                                        &value);
+    if (success) {
+        printf ("  Alpha Size:\t %u\n", value);
+    } else {
+        printf ("  Alpha Size:\t Unknown\n");
+    }
+    success = ugl_get_config_attribute (ugl, ugl_config, UGL_DEPTH_SIZE,
+                                        &value);
+    if (success) {
+        printf ("  Depth Size:\t %u\n", value);
+    } else {
+        printf ("  Depth Size:\t Unknown\n");
+    }
+    success = ugl_get_config_attribute (ugl, ugl_config, UGL_STENCIL_SIZE,
+                                        &value);
+    if (success) {
+        printf ("  Stencil Size:\t %u\n", value);
+    } else {
+        printf ("  Stencil Size:\t Unknown\n");
     }
 }
 
