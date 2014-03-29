@@ -102,57 +102,51 @@ UGLRenderSurface *ugl_create_window_render_surface (const UGL *ugl,
     return surface;
 }
 
+/** Convert UGL framebuffer attribute to GLX attribute
+ * @param attribute UGL framebuffer attribute
+ * @returns GLX framebuffer attribute
+ */
+static int ugl_attribute_convert_to_glx (unsigned int attribute)
+{
+    switch (attribute) {
+        case UGL_RED_SIZE:
+            return GLX_RED_SIZE;
+        case UGL_GREEN_SIZE:
+            return GLX_GREEN_SIZE;
+        case UGL_BLUE_SIZE:
+            return GLX_BLUE_SIZE;
+        case UGL_ALPHA_SIZE:
+            return GLX_ALPHA_SIZE;
+        case UGL_DEPTH_SIZE:
+            return GLX_DEPTH_SIZE;
+        case UGL_STENCIL_SIZE:
+            return GLX_STENCIL_SIZE;
+        default:
+            return -1;
+    }
+}
+
 int ugl_get_config_attribute (const UGL *ugl, UGLFrameBufferConfig *config,
                               unsigned int attribute, void *value)
 {
-    int result = 0;
-    XVisualInfo *info = NULL;
-    if (!ugl->is_legacy) {
-        info = glXGetVisualFromFBConfig (ugl->display, (GLXFBConfig)config);
-        if (info == NULL) {
-            return 0;
+    int native_attribute = -1;
+    if (attribute == UGL_NATIVE_VISUAL_ID) {
+        if (ugl->is_legacy) {
+            * ((VisualID *)value) = ((XVisualInfo *)config)->visualid;
+            return 1;
         }
-    } else {
-        info = (XVisualInfo *)config;
+        return glXGetFBConfigAttrib (ugl->display, (GLXFBConfig)config,
+                                     GLX_VISUAL_ID, (int *) value) == Success;
     }
 
-    switch (attribute) {
-        case UGL_NATIVE_VISUAL_ID:
-            * ((VisualID *)value) = info->visualid;
-            result = 1;
-            break;
-        case UGL_RED_SIZE:
-            result = glXGetConfig (ugl->display, info, GLX_RED_SIZE,
-                                   (int *) value) == Success;
-            break;
-        case UGL_GREEN_SIZE:
-            result = glXGetConfig (ugl->display, info, GLX_GREEN_SIZE,
-                                   (int *) value) == Success;
-            break;
-        case UGL_BLUE_SIZE:
-            result = glXGetConfig (ugl->display, info, GLX_BLUE_SIZE,
-                                   (int *) value) == Success;
-            break;
-        case UGL_ALPHA_SIZE:
-            result = glXGetConfig (ugl->display, info, GLX_ALPHA_SIZE,
-                                   (int *) value) == Success;
-            break;
-        case UGL_DEPTH_SIZE:
-            result = glXGetConfig (ugl->display, info, GLX_DEPTH_SIZE,
-                                   (int *) value) == Success;
-            break;
-        case UGL_STENCIL_SIZE:
-            result = glXGetConfig (ugl->display, info, GLX_STENCIL_SIZE,
-                                   (int *) value) == Success;
-            break;
-        default:
-            result = 0;
-    }
+    native_attribute = ugl_attribute_convert_to_glx (attribute);
 
-    if (!ugl->is_legacy) {
-        XFree (info);
+    if (ugl->is_legacy) {
+        return glXGetConfig (ugl->display, (XVisualInfo *)config,
+                             native_attribute, (int *) value) == Success;
     }
-    return result;
+    return glXGetFBConfigAttrib (ugl->display, (GLXFBConfig)config,
+                                 native_attribute, (int *) value) == Success;
 }
 
 UGLFrameBufferConfig *ugl_choose_framebuffer_config (const UGL *ugl,
