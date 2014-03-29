@@ -15,9 +15,7 @@ typedef struct UGLRenderSurface UGLRenderSurface;
 typedef Window UGLNativeWindow;
 #endif
 
-enum UGLConfigAttribute {
-    UGL_NATIVE_VISUAL_ID
-};
+#define UGL_NATIVE_VISUAL_ID 0x302E
 
 #ifdef __cplusplus
 extern "C" {
@@ -45,7 +43,7 @@ UGLFrameBufferConfig *ugl_choose_framebuffer_config (const UGL *ugl,
  * @returns non-zero if attribute retreived succesfully, 0 otherwise
  */
 int ugl_get_config_attribute (const UGL *ugl, UGLFrameBufferConfig *config,
-                              enum UGLConfigAttribute attribute, void *value);
+                              unsigned int attribute, void *value);
 
 /** Create render surface assosiated with window
  * @param ugl pointer to universal OpenGL interface object

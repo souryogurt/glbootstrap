@@ -103,7 +103,7 @@ UGLRenderSurface *ugl_create_window_render_surface (const UGL *ugl,
 }
 
 int ugl_get_config_attribute (const UGL *ugl, UGLFrameBufferConfig *config,
-                              enum UGLConfigAttribute attribute, void *value)
+                              unsigned int attribute, void *value)
 {
     if (attribute == UGL_NATIVE_VISUAL_ID) {
         XVisualInfo *info = NULL;
