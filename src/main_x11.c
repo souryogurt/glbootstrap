@@ -25,6 +25,8 @@ static game_window_t *main_window = NULL;
 /** The name the program was run with */
 static const char *program_name;
 
+static int verbose = 0;
+
 /** License text to show when application is runned with --version flag */
 static const char *version_text =
     PACKAGE_STRING "\n\n"
@@ -37,6 +39,7 @@ static const char *version_text =
 static struct option const long_options[] = {
     {"help", no_argument, NULL, 'h'},
     {"version", no_argument, NULL, 'V'},
+    {"verbose", no_argument, NULL, 'v'},
     {NULL, 0, NULL, 0}
 };
 
@@ -162,6 +165,7 @@ static void print_usage (void)
             "Options:\n"
             "  -h, --help     display this help and exit\n"
             "  -V, --version  output version information and exit\n"
+            "  --verbose      be verbose\n"
             "\nReport bugs to: <" PACKAGE_BUGREPORT ">\n", program_name);
 }
 
@@ -181,6 +185,9 @@ static void parse_args (int argc, char *const *argv)
             case 'V':
                 printf ("%s\n", version_text);
                 exit (EXIT_SUCCESS);
+            case 'v':
+                verbose = 1;
+                break;
             default:
                 print_usage();
                 exit (EXIT_FAILURE);
@@ -227,6 +234,11 @@ int main (int argc, char *const *argv)
         ugl_free_framebuffer_config (ugl, ugl_config);
         ugl_free (ugl);
         return EXIT_FAILURE;
+    }
+
+    if (verbose) {
+        fprintf (stdout, "%s: VisualID: 0x%03X\n", program_name,
+                (unsigned int)visual_id);
     }
 
     display = XOpenDisplay (NULL);
