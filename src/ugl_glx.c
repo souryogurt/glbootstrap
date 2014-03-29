@@ -125,7 +125,7 @@ int ugl_get_config_attribute (const UGL *ugl, UGLFrameBufferConfig *config,
     return 0;
 }
 
-UGLFrameBufferConfig *ugl_get_framebuffer_config (const UGL *ugl,
+UGLFrameBufferConfig *ugl_choose_framebuffer_config (const UGL *ugl,
         const int *attributes)
 {
     UGLFrameBufferConfig *config = NULL;

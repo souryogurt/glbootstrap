@@ -29,12 +29,12 @@ extern "C" {
  */
 UGL *ugl_create (void *display_id);
 
-/** Get framebuffer configuration with specific attributes
+/** Choose framebuffer configuration based on specified attributes
  * @param ugl pointer to universal OpenGL interface object
  * @param attributes the array of GLX 1.3 attributes
  * @returns framebuffer configuration object
  */
-UGLFrameBufferConfig *ugl_get_framebuffer_config (const UGL *ugl,
+UGLFrameBufferConfig *ugl_choose_framebuffer_config (const UGL *ugl,
         const int *attributes);
 
 /** Get framebuffer configuration's attribute

@@ -215,7 +215,7 @@ int main (int argc, char *const *argv)
         return EXIT_FAILURE;
     }
 
-    if ((ugl_config = ugl_get_framebuffer_config (ugl, attribs)) == NULL) {
+    if ((ugl_config = ugl_choose_framebuffer_config (ugl, attribs)) == NULL) {
         fprintf (stderr, "%s: can't retrieve a framebuffer config\n",
                  program_name);
         ugl_free (ugl);
