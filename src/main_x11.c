@@ -274,7 +274,7 @@ int main (int argc, char *const *argv)
     UGL *ugl = NULL;
     UGLFrameBufferConfig *ugl_config = NULL;
     UGLRenderSurface *surface = NULL;
-    VisualID visual_id;
+    VisualID visual_id = 0;
     Display *display = NULL;
 
     parse_args (argc, argv);
