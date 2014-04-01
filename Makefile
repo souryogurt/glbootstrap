@@ -11,3 +11,9 @@ ugl_glx.o:	inc/ugl.h src/ugl_glx.c
 
 clean:	
 	rm ./glbootstrap ./main_x11.o ./ugl_glx.o
+
+oclint:		inc/ugl.h src/ugl_glx.c src/main_x11.c
+	oclint --enable-global-analysis src/main_x11.c src/ugl_glx.c -- -c -I./inc
+
+tags:
+	ctags -R
