@@ -48,29 +48,23 @@ static struct option const long_options[] = {
  */
 static void window_process_events (game_window_t *window)
 {
-    XConfigureEvent xce;
-
     int count = XPending (window->display);
     while (count > 0) {
         XEvent event;
         XNextEvent (window->display, &event);
-        switch (event.type) {
-            case ClientMessage:
-                if ((Atom)event.xclient.data.l[0] == window->wm_delete_window) {
-                    window->is_closed = 1;
-                }
-                break;
-            case ConfigureNotify:
-                xce = event.xconfigure;
-                if ((xce.width != window->width)
-                        || (xce.height != window->height)) {
-                    window->width = xce.width;
-                    window->height = xce.height;
-                    /*game_resize (window->width, window->height);*/
-                }
-                break;
-            default:
-                break;
+        if (event.type == ClientMessage) {
+            if ((Atom)event.xclient.data.l[0] == window->wm_delete_window) {
+                window->is_closed = 1;
+            }
+        } else if (event.type == ConfigureNotify) {
+            XConfigureEvent xce;
+            xce = event.xconfigure;
+            if ((xce.width != window->width)
+                    || (xce.height != window->height)) {
+                window->width = xce.width;
+                window->height = xce.height;
+                /*game_resize (window->width, window->height);*/
+            }
         }
         count--;
     }
@@ -241,7 +235,7 @@ static void parse_args (int argc, char *const *argv)
     while ((opt = getopt_long (argc, argv, "hV", long_options, NULL)) != -1) {
         switch (opt) {
             case 'h':
-                print_usage();
+                print_usage ();
                 exit (EXIT_SUCCESS);
             case 'V':
                 printf ("%s\n", version_text);
@@ -250,7 +244,7 @@ static void parse_args (int argc, char *const *argv)
                 verbose = 1;
                 break;
             default:
-                print_usage();
+                print_usage ();
                 exit (EXIT_FAILURE);
         }
     }

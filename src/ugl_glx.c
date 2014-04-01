@@ -9,7 +9,7 @@ struct UGL {
     int screen; /**< Screen number where UGL where created */
     int glx_major; /**< Major version of glx */
     int glx_minor; /**< Minor version of glx */
-    int is_legacy; /**< Is we have legacy GLX version (GLX <=1.2) */
+    int is_modern; /**< Is we have modern GLX version (GLX > 1.2) */
     int is_arb_context_profile; /**< Is GLX_ARB_create_context_profile there*/
     char padding[4];
 };
@@ -27,7 +27,7 @@ void ugl_free (UGL *ugl)
 
 void ugl_free_framebuffer_config (const UGL *ugl, UGLFrameBufferConfig *config)
 {
-    if (ugl->is_legacy) {
+    if (!ugl->is_modern) {
         XFree (config);
     }
 }
@@ -35,7 +35,7 @@ void ugl_free_framebuffer_config (const UGL *ugl, UGLFrameBufferConfig *config)
 void ugl_free_render_surface (const UGL *ugl, UGLRenderSurface *surface)
 {
     glXDestroyContext (ugl->display, surface->context);
-    if (!ugl->is_legacy) {
+    if (ugl->is_modern) {
         glXDestroyWindow (ugl->display, surface->drawable);
     }
     free (surface);
@@ -55,7 +55,7 @@ int ugl_make_current (const UGL *ugl, const UGLRenderSurface *surface)
         context = surface->context;
     }
     /* Make context current */
-    if (!ugl->is_legacy) {
+    if (ugl->is_modern) {
         return glXMakeContextCurrent (ugl->display, drawable, drawable,
                                       context) == True;
     }
@@ -69,7 +69,7 @@ UGLRenderSurface *ugl_create_window_render_surface (const UGL *ugl,
     GLXContext context = NULL;
     UGLRenderSurface *surface = NULL;
     /* Creating openGL context */
-    if (!ugl->is_legacy) {
+    if (ugl->is_modern) {
         GLXFBConfig glx_config = (GLXFBConfig)config;
         drawable = glXCreateWindow (ugl->display, glx_config, window, NULL);
         if (ugl->glXCreateContextAttribsARB) {
@@ -131,22 +131,24 @@ int ugl_get_config_attribute (const UGL *ugl, UGLFrameBufferConfig *config,
 {
     int native_attribute = -1;
     if (attribute == UGL_NATIVE_VISUAL_ID) {
-        if (ugl->is_legacy) {
-            * ((VisualID *)value) = ((XVisualInfo *)config)->visualid;
-            return 1;
+        if (ugl->is_modern) {
+            GLXFBConfig fb_config = (GLXFBConfig)config;
+            return glXGetFBConfigAttrib (ugl->display, fb_config, GLX_VISUAL_ID,
+                                         (int *) value) == Success;
         }
-        return glXGetFBConfigAttrib (ugl->display, (GLXFBConfig)config,
-                                     GLX_VISUAL_ID, (int *) value) == Success;
+        * ((VisualID *)value) = ((XVisualInfo *)config)->visualid;
+        return 1;
     }
 
     native_attribute = ugl_attribute_convert_to_glx (attribute);
 
-    if (ugl->is_legacy) {
-        return glXGetConfig (ugl->display, (XVisualInfo *)config,
-                             native_attribute, (int *) value) == Success;
+    if (ugl->is_modern) {
+        GLXFBConfig fb_config = (GLXFBConfig)config;
+        return glXGetFBConfigAttrib (ugl->display, fb_config, native_attribute,
+                                     (int *) value) == Success;
     }
-    return glXGetFBConfigAttrib (ugl->display, (GLXFBConfig)config,
-                                 native_attribute, (int *) value) == Success;
+    return glXGetConfig (ugl->display, (XVisualInfo *)config, native_attribute,
+                         (int *) value) == Success;
 }
 
 UGLFrameBufferConfig *ugl_choose_framebuffer_config (const UGL *ugl,
@@ -154,7 +156,7 @@ UGLFrameBufferConfig *ugl_choose_framebuffer_config (const UGL *ugl,
 {
     UGLFrameBufferConfig *config = NULL;
     int fbcount = 0;
-    if (!ugl->is_legacy) {
+    if (ugl->is_modern) {
         GLXFBConfig *fbc = NULL;
         fbc = glXChooseFBConfig (ugl->display, ugl->screen, attributes,
                                  &fbcount);
@@ -206,9 +208,9 @@ static int is_extension_supported (const char *ext_string, const char *ext)
 
 UGL *ugl_create (void *display_id)
 {
-    UGL *ugl;
-    int major_version;
-    int minor_version;
+    UGL *ugl = NULL;
+    int major_version = 0;
+    int minor_version = 0;
 
     Display *display = XOpenDisplay ((char *)display_id);
     if (display == NULL) {
@@ -225,28 +227,27 @@ UGL *ugl_create (void *display_id)
     }
 
     ugl = (UGL *) malloc (sizeof (UGL));
-    if (ugl != NULL) {
-        const char *extensions;
+    if (ugl) {
+        const char *extensions = NULL;
+        memset (ugl, 0, sizeof (UGL));
         ugl->display = display;
         ugl->screen = DefaultScreen (display);
         ugl->glx_major = major_version;
         ugl->glx_minor = minor_version;
-        ugl->is_legacy = ((minor_version == 2) && (major_version == 1));
+        ugl->is_modern = ((major_version == 1) && (minor_version > 2)) ||
+                         (major_version > 1);
         /* Check available GLX extensions */
         extensions = glXQueryExtensionsString (ugl->display, ugl->screen);
 
-        if (is_extension_supported (extensions, "GLX_ARB_create_context") != 0) {
-            ugl->glXCreateContextAttribsARB = (PFNGLXCREATECONTEXTATTRIBSARBPROC)
-                                              glXGetProcAddressARB ((const GLubyte *)"glXCreateContextAttribsARB");
+        if (is_extension_supported (extensions, "GLX_ARB_create_context")) {
+            ugl->glXCreateContextAttribsARB =
+                (PFNGLXCREATECONTEXTATTRIBSARBPROC)
+                glXGetProcAddressARB ((const GLubyte *)"glXCreateContextAttribsARB");
             ugl->is_arb_context_profile = is_extension_supported (extensions,
                                           "GLX_ARB_create_context_profile");
-        } else {
-            ugl->glXCreateContextAttribsARB = NULL;
-            ugl->is_arb_context_profile = 0;
         }
     } else {
         XCloseDisplay (display);
     }
-
     return ugl;
 }
