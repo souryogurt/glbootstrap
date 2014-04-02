@@ -17,3 +17,9 @@ oclint:		inc/ugl.h src/ugl_glx.c src/main_x11.c
 
 tags:
 	ctags -R
+
+astyle:
+	astyle --options=./astylerc src/*.c inc/*.h
+
+cppcheck:
+	cppcheck -q --template=gcc --std=c89 --enable=all -I./inc src/*.c
