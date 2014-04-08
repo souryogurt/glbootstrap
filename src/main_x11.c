@@ -43,6 +43,38 @@ static struct option const long_options[] = {
     {NULL, 0, NULL, 0}
 };
 
+/** Print attribute of framebuffer configuration as unsigned int
+ * @param ugl pointer to universal OpenGL interface object
+ * @param ugl_config pointer to framebuffer configuration object
+ * @param attribute framebuffer's attribute to print
+ * @param attribute_name human readable name of attribute
+ */
+static void print_framebuffer_attribute_int (const UGL *ugl,
+        UGLFrameBufferConfig *ugl_config, unsigned int attribute,
+        const char *attribute_name)
+{
+    int success;
+    unsigned int value;
+    success = ugl_get_config_attribute (ugl, ugl_config, attribute, &value);
+    if (success) {
+        printf ("  %s:\t %u\n", attribute_name, value);
+    } else {
+        printf ("  %s:\t Unknown\n", attribute_name);
+    }
+}
+
+/** Print usage information */
+static void print_usage (void)
+{
+    printf ("Usage: %s [OPTION]...\n"
+            "Displays OpenGL animation in X11 window\n\n"
+            "Options:\n"
+            "  -h, --help     display this help and exit\n"
+            "  -V, --version  output version information and exit\n"
+            "  --verbose      be verbose\n"
+            "\nReport bugs to: <" PACKAGE_BUGREPORT ">\n", program_name);
+}
+
 /** Process all pending events
  * @param window events of this window should be processed
  */
@@ -151,18 +183,6 @@ static game_window_t *window_create (Display *display, const char *caption,
     return window;
 }
 
-/** Print usage information */
-static void print_usage (void)
-{
-    printf ("Usage: %s [OPTION]...\n"
-            "Displays OpenGL animation in X11 window\n\n"
-            "Options:\n"
-            "  -h, --help     display this help and exit\n"
-            "  -V, --version  output version information and exit\n"
-            "  --verbose      be verbose\n"
-            "\nReport bugs to: <" PACKAGE_BUGREPORT ">\n", program_name);
-}
-
 /** Print configuration of selected framebuffer
  * @param ugl pointer to universal OpenGL interface object
  * @param ugl_config pointer to framebuffer configuration object
@@ -180,48 +200,17 @@ static void print_framebuffer_configuration (const UGL *ugl,
     } else {
         printf ("  VisualID:\t Unknown\n");
     }
-
-    success = ugl_get_config_attribute (ugl, ugl_config, UGL_RED_SIZE, &value);
-    if (success) {
-        printf ("  Red Size:\t %u\n", value);
-    } else {
-        printf ("  Red Size:\t Unknown\n");
-    }
-    success = ugl_get_config_attribute (ugl, ugl_config, UGL_GREEN_SIZE,
-                                        &value);
-    if (success) {
-        printf ("  Green Size:\t %u\n", value);
-    } else {
-        printf ("  Green Size:\t Unknown\n");
-    }
-    success = ugl_get_config_attribute (ugl, ugl_config, UGL_BLUE_SIZE,
-                                        &value);
-    if (success) {
-        printf ("  Blue Size:\t %u\n", value);
-    } else {
-        printf ("  Blue Size:\t Unknown\n");
-    }
-    success = ugl_get_config_attribute (ugl, ugl_config, UGL_ALPHA_SIZE,
-                                        &value);
-    if (success) {
-        printf ("  Alpha Size:\t %u\n", value);
-    } else {
-        printf ("  Alpha Size:\t Unknown\n");
-    }
-    success = ugl_get_config_attribute (ugl, ugl_config, UGL_DEPTH_SIZE,
-                                        &value);
-    if (success) {
-        printf ("  Depth Size:\t %u\n", value);
-    } else {
-        printf ("  Depth Size:\t Unknown\n");
-    }
-    success = ugl_get_config_attribute (ugl, ugl_config, UGL_STENCIL_SIZE,
-                                        &value);
-    if (success) {
-        printf ("  Stencil Size:\t %u\n", value);
-    } else {
-        printf ("  Stencil Size:\t Unknown\n");
-    }
+    print_framebuffer_attribute_int (ugl, ugl_config, UGL_RED_SIZE, "Red Size");
+    print_framebuffer_attribute_int (ugl, ugl_config, UGL_GREEN_SIZE,
+                                     "Green Size");
+    print_framebuffer_attribute_int (ugl, ugl_config, UGL_BLUE_SIZE,
+                                     "Blue Size");
+    print_framebuffer_attribute_int (ugl, ugl_config, UGL_ALPHA_SIZE,
+                                     "Alpha Size");
+    print_framebuffer_attribute_int (ugl, ugl_config, UGL_DEPTH_SIZE,
+                                     "Depth Size");
+    print_framebuffer_attribute_int (ugl, ugl_config, UGL_STENCIL_SIZE,
+                                     "Stencil Size");
 }
 
 /** Parse command-line arguments
