@@ -151,6 +151,53 @@ int ugl_get_config_attribute (const UGL *ugl, UGLFrameBufferConfig *config,
                          (int *) value) == Success;
 }
 
+/** Default attributes for GLX1.3 framebuffer */
+static int default_fb_attrs[] = {
+    GLX_X_RENDERABLE, True,
+    GLX_DRAWABLE_TYPE, GLX_WINDOW_BIT,
+    GLX_RENDER_TYPE, GLX_RGBA_BIT,
+    GLX_DOUBLEBUFFER, True
+};
+
+/** Convert array of UGL attributes to array of GLX FB attributes
+ * @param fb_attributes output array at least of 9 elements
+ * @param attributes array of ugl attributes
+ * @returns non-zero if all attributes have converted, 0 otherwise
+ */
+static int ugl_convert_to_fb_attributes (int *fb_attributes,
+        const int *attributes)
+{
+    size_t index = 0;
+    int *fb_attribute = &fb_attributes[8];
+    memcpy (fb_attributes, default_fb_attrs, sizeof (default_fb_attrs));
+    for (index = 0; attributes[index] != None; index += 2) {
+        switch (attributes[index]) {
+            case UGL_RED_SIZE:
+                fb_attribute[index] = GLX_RED_SIZE;
+                break;
+            case UGL_GREEN_SIZE:
+                fb_attribute[index] = GLX_GREEN_SIZE;
+                break;
+            case UGL_BLUE_SIZE:
+                fb_attribute[index] = GLX_BLUE_SIZE;
+                break;
+            case UGL_ALPHA_SIZE:
+                fb_attribute[index] = GLX_ALPHA_SIZE;
+                break;
+            case UGL_DEPTH_SIZE:
+                fb_attribute[index] = GLX_DEPTH_SIZE;
+                break;
+            case UGL_STENCIL_SIZE:
+                fb_attribute[index] = GLX_STENCIL_SIZE;
+                break;
+            default:
+                return 0;
+        };
+        fb_attribute[index + 1] = attributes[index + 1];
+    }
+    return 1;
+}
+
 UGLFrameBufferConfig *ugl_choose_framebuffer_config (const UGL *ugl,
         const int *attributes)
 {
@@ -158,7 +205,9 @@ UGLFrameBufferConfig *ugl_choose_framebuffer_config (const UGL *ugl,
     int fbcount = 0;
     if (ugl->is_modern) {
         GLXFBConfig *fbc = NULL;
-        fbc = glXChooseFBConfig (ugl->display, ugl->screen, attributes,
+        int fb_attributes[8 + 12 + 1] = {None};
+        ugl_convert_to_fb_attributes (fb_attributes, attributes);
+        fbc = glXChooseFBConfig (ugl->display, ugl->screen, fb_attributes,
                                  &fbcount);
         if (fbc != NULL) {
             config = (UGLFrameBufferConfig *) fbc[0];

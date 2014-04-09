@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <getopt.h>
 #include <X11/Xlib.h>
-#include <GL/glx.h> /* To specify UGL config attrubutes */
+#include <X11/Xutil.h>
 #include "ugl.h"
 
 #define PACKAGE_STRING "glbootstrap 0.1"
@@ -242,16 +242,12 @@ static void parse_args (int argc, char *const *argv)
 int main (int argc, char *const *argv)
 {
     static const int attribs[] = {
-        GLX_X_RENDERABLE, True,
-        GLX_DRAWABLE_TYPE, GLX_WINDOW_BIT,
-        GLX_RENDER_TYPE, GLX_RGBA_BIT,
-        GLX_RED_SIZE, 8,
-        GLX_GREEN_SIZE, 8,
-        GLX_BLUE_SIZE, 8,
-        GLX_ALPHA_SIZE, 8,
-        GLX_DEPTH_SIZE, 16,
-        GLX_STENCIL_SIZE, 8,
-        GLX_DOUBLEBUFFER, True,
+        UGL_RED_SIZE, 8,
+        UGL_GREEN_SIZE, 8,
+        UGL_BLUE_SIZE, 8,
+        UGL_ALPHA_SIZE, 8,
+        UGL_DEPTH_SIZE, 16,
+        UGL_STENCIL_SIZE, 8,
         None
     };
     UGL *ugl = NULL;
