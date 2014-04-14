@@ -167,16 +167,14 @@ static int legacy_attribs[] = {
 };
 
 /** Convert array of UGL attributes to array of GLX FB attributes
- * @param fb_attributes output array at least of 9 elements
+ * @param fb_attribute output array
  * @param attributes array of ugl attributes
  * @returns non-zero if all attributes have converted, 0 otherwise
  */
-static int ugl_convert_to_fb_attributes (int *fb_attributes,
+static int ugl_convert_to_fb_attributes (int *fb_attribute,
         const int *attributes)
 {
     size_t index = 0;
-    int *fb_attribute = &fb_attributes[8];
-    memcpy (fb_attributes, default_fb_attrs, sizeof (default_fb_attrs));
     for (index = 0; attributes[index] != None; index += 2) {
         switch (attributes[index]) {
             case UGL_RED_SIZE:
@@ -213,7 +211,8 @@ UGLFrameBufferConfig *ugl_choose_framebuffer_config (const UGL *ugl,
     if (ugl->is_modern) {
         int fbcount = 0;
         GLXFBConfig *fbc = NULL;
-        ugl_convert_to_fb_attributes (fb_attributes, attributes);
+        memcpy (fb_attributes, default_fb_attrs, sizeof (default_fb_attrs));
+        ugl_convert_to_fb_attributes (&fb_attributes[8], attributes);
         fbc = glXChooseFBConfig (ugl->display, ugl->screen, fb_attributes,
                                  &fbcount);
         if (fbc != NULL) {
@@ -221,7 +220,8 @@ UGLFrameBufferConfig *ugl_choose_framebuffer_config (const UGL *ugl,
             XFree (fbc);
         }
     } else {
-        /**TODO: convert attribs to GLX1.2 attribs list */
+        memcpy (fb_attributes, legacy_attribs, sizeof (legacy_attribs));
+        ugl_convert_to_fb_attributes (&fb_attributes[6], attributes);
         config = (UGLFrameBufferConfig *)
                  glXChooseVisual (ugl->display, ugl->screen, legacy_attribs);
     }
