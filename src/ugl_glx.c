@@ -159,6 +159,13 @@ static int default_fb_attrs[] = {
     GLX_DOUBLEBUFFER, True
 };
 
+/** Default attributes for GLX1.2 visual */
+static int legacy_attribs[] = {
+    GLX_USE_GL, True,
+    GLX_RGBA, True,
+    GLX_DOUBLEBUFFER, True,
+};
+
 /** Convert array of UGL attributes to array of GLX FB attributes
  * @param fb_attributes output array at least of 9 elements
  * @param attributes array of ugl attributes
@@ -202,10 +209,10 @@ UGLFrameBufferConfig *ugl_choose_framebuffer_config (const UGL *ugl,
         const int *attributes)
 {
     UGLFrameBufferConfig *config = NULL;
-    int fbcount = 0;
+    int fb_attributes[8 + 12 + 1] = {None};
     if (ugl->is_modern) {
+        int fbcount = 0;
         GLXFBConfig *fbc = NULL;
-        int fb_attributes[8 + 12 + 1] = {None};
         ugl_convert_to_fb_attributes (fb_attributes, attributes);
         fbc = glXChooseFBConfig (ugl->display, ugl->screen, fb_attributes,
                                  &fbcount);
@@ -215,18 +222,6 @@ UGLFrameBufferConfig *ugl_choose_framebuffer_config (const UGL *ugl,
         }
     } else {
         /**TODO: convert attribs to GLX1.2 attribs list */
-        static int legacy_attribs[] = {
-            GLX_USE_GL, True,
-            GLX_RGBA, True,
-            GLX_RED_SIZE, 8,
-            GLX_GREEN_SIZE, 8,
-            GLX_BLUE_SIZE, 8,
-            GLX_ALPHA_SIZE, 8,
-            GLX_DEPTH_SIZE, 16,
-            GLX_STENCIL_SIZE, 8,
-            GLX_DOUBLEBUFFER, True,
-            None
-        };
         config = (UGLFrameBufferConfig *)
                  glXChooseVisual (ugl->display, ugl->screen, legacy_attribs);
     }
