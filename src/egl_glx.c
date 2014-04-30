@@ -68,6 +68,7 @@ typedef struct EGL_GLXDisplay {
     int is_modern; /**< Is we have modern GLX version (GLX > 1.2) */
     int is_arb_context_profile; /**< Is GLX_ARB_create_context_profile there*/
     int is_ext_visual_rating; /**< Is GLX_EXT_visual_rating there */
+    int is_ext_visual_info; /**< Is GLX_EXT_visual_info there */
 } EGL_GLXDisplay;
 
 #define DISPLAY_TABLE_SIZE 1
@@ -517,8 +518,12 @@ static EGLBoolean visualinfo_to_eglconfig (EGL_GLXDisplay *egl_display,
     egl_config->native_visual_id = (EGLint) info->visualid;
 
     /* I'm not sure what is info->class :) */
-    /* TODO: Implement via GLX_EXT_visual_info */
     egl_config->native_visual_type = info->class;
+    if (egl_display->is_ext_visual_info) {
+        if (glXGetConfig (display, info, GLX_X_VISUAL_TYPE_EXT, &value) == 0) {
+            egl_config->native_visual_type = value;
+        }
+    }
 
     /* TODO: Implement via GLX_ARB_multisample */
     egl_config->sample_buffers = 0;
@@ -529,8 +534,20 @@ static EGLBoolean visualinfo_to_eglconfig (EGL_GLXDisplay *egl_display,
     }
     egl_config->surface_type = EGL_WINDOW_BIT | EGL_PIXMAP_BIT;
 
-    /* TODO: Implement via GLX_EXT_visual_info */
     egl_config->transparent_type = EGL_NONE;
+    if (egl_display->is_ext_visual_info) {
+        if (glXGetConfig (display, info, GLX_TRANSPARENT_TYPE_EXT, &value) == 0) {
+            if (value == GLX_TRANSPARENT_RGB_EXT) {
+                egl_config->transparent_type = EGL_TRANSPARENT_RGB;
+                glXGetConfig (display, info, GLX_TRANSPARENT_RED_VALUE_EXT,
+                              (int *)&egl_config->transparent_red_value);
+                glXGetConfig (display, info, GLX_TRANSPARENT_GREEN_VALUE_EXT,
+                              (int *)&egl_config->transparent_green_value);
+                glXGetConfig (display, info, GLX_TRANSPARENT_BLUE_VALUE_EXT,
+                              (int *)&egl_config->transparent_blue_value);
+            }
+        }
+    }
     if (err != 0 ) {
         return EGL_FALSE;
     }
@@ -640,6 +657,9 @@ EGLBoolean EGLAPIENTRY eglInitialize (EGLDisplay dpy, EGLint *major,
             egl_display->is_ext_visual_rating = is_extension_supported (
                                                     extensions,
                                                     "GLX_EXT_visual_rating");
+            egl_display->is_ext_visual_info = is_extension_supported (
+                                                  extensions,
+                                                  "GLX_EXT_visual_info");
             if (allocate_configs (egl_display) != EGL_TRUE) {
                 XCloseDisplay (display);
                 free (egl_display);
