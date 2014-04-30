@@ -520,6 +520,9 @@ static EGLBoolean visualinfo_to_eglconfig (EGL_GLXDisplay *egl_display,
 
     /* TODO: Implement via GLX_EXT_visual_info */
     egl_config->transparent_type = EGL_NONE;
+    if (err != 0 ) {
+        return EGL_FALSE;
+    }
     return EGL_TRUE;
 }
 
