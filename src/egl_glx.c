@@ -503,7 +503,7 @@ static EGLBoolean visualinfo_to_eglconfig (EGL_GLXDisplay *egl_display,
 
     /* Native rendering is supported, since config is based on XVisualInfo */
     egl_config->native_renderable = EGL_TRUE;
-    egl_config->native_visual_id = info->visualid;
+    egl_config->native_visual_id = (EGLint) info->visualid;
 
     /* I'm not sure what is info->class :) */
     /* TODO: Implement via GLX_EXT_visual_info */
@@ -550,7 +550,7 @@ static EGLBoolean allocate_configs (EGL_GLXDisplay *egl_display)
         }
     } else {
         int n_visualinfo = 0;
-        XVisualInfo info_template = {0};
+        XVisualInfo info_template;
         XVisualInfo *info = NULL;
         info_template.screen = egl_display->screen;
         info = XGetVisualInfo (egl_display->x11_display, VisualScreenMask,
