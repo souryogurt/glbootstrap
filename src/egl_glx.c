@@ -69,6 +69,7 @@ typedef struct EGL_GLXDisplay {
     int is_arb_context_profile; /**< Is GLX_ARB_create_context_profile there*/
     int is_ext_visual_rating; /**< Is GLX_EXT_visual_rating there */
     int is_ext_visual_info; /**< Is GLX_EXT_visual_info there */
+    int is_arb_multisample; /**< Is GLX_ARB_multisample there */
 } EGL_GLXDisplay;
 
 #define DISPLAY_TABLE_SIZE 1
@@ -399,9 +400,21 @@ static EGLBoolean fbconfig_to_eglconfig (EGL_GLXDisplay *egl_display,
                               (int *)&egl_config->sample_buffers);
         glXGetFBConfigAttrib (egl_display->x11_display, glx_config, GLX_SAMPLES,
                               (int *)&egl_config->samples);
-    } else {
-        egl_config->sample_buffers = 0;
-        egl_config->samples = 0;
+    } else if (egl_display->is_arb_multisample) {
+        XVisualInfo info_template;
+        int n_visualinfo = 0;
+        Display *display = egl_display->x11_display;
+        XVisualInfo *info = NULL;
+        info_template.visualid = (VisualID) egl_config->native_visual_id;
+        info = XGetVisualInfo (display, VisualIDMask,
+                               &info_template, &n_visualinfo);
+        if (info ) {
+            glXGetConfig (display, info, GLX_SAMPLE_BUFFERS_ARB,
+                          (int *)&egl_config->sample_buffers);
+            glXGetConfig (display, info, GLX_SAMPLES_ARB,
+                          (int *)&egl_config->samples);
+            XFree (info);
+        }
     }
 
     glXGetFBConfigAttrib (egl_display->x11_display, glx_config,
@@ -525,9 +538,13 @@ static EGLBoolean visualinfo_to_eglconfig (EGL_GLXDisplay *egl_display,
         }
     }
 
-    /* TODO: Implement via GLX_ARB_multisample */
-    egl_config->sample_buffers = 0;
-    egl_config->samples = 0;
+    if (egl_display->is_arb_multisample) {
+        glXGetConfig (display, info, GLX_SAMPLE_BUFFERS_ARB,
+                      (int *)&egl_config->sample_buffers);
+        glXGetConfig (display, info, GLX_SAMPLES_ARB,
+                      (int *)&egl_config->samples);
+    }
+
     if (err == 0) {
         err = glXGetConfig (display, info, GLX_STENCIL_SIZE,
                             (int *) &egl_config->stencil_size);
@@ -660,6 +677,9 @@ EGLBoolean EGLAPIENTRY eglInitialize (EGLDisplay dpy, EGLint *major,
             egl_display->is_ext_visual_info = is_extension_supported (
                                                   extensions,
                                                   "GLX_EXT_visual_info");
+            egl_display->is_arb_multisample = is_extension_supported (
+                                                  extensions,
+                                                  "GLX_ARB_multisample");
             if (allocate_configs (egl_display) != EGL_TRUE) {
                 XCloseDisplay (display);
                 free (egl_display);
