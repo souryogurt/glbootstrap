@@ -67,6 +67,7 @@ typedef struct EGL_GLXDisplay {
     int glx_minor; /**< Minor version of glx */
     int is_modern; /**< Is we have modern GLX version (GLX > 1.2) */
     int is_arb_context_profile; /**< Is GLX_ARB_create_context_profile there*/
+    int is_ext_visual_rating; /**< Is GLX_EXT_visual_rating there */
 } EGL_GLXDisplay;
 
 #define DISPLAY_TABLE_SIZE 1
@@ -471,8 +472,18 @@ static EGLBoolean visualinfo_to_eglconfig (EGL_GLXDisplay *egl_display,
         return EGL_FALSE;
     }
     egl_config->color_buffer_type = EGL_RGB_BUFFER;
-    /* TODO: implement EGL_CONFIG_CAVEAT using GLX_EXT_visual_rating */
     egl_config->config_caveat = EGL_NONE;
+    if (egl_display->is_ext_visual_rating) {
+        if (glXGetConfig (display, info, GLX_VISUAL_CAVEAT_EXT, &value) == 0) {
+            if (value == GLX_NONE_EXT) {
+                egl_config->config_caveat = EGL_NONE;
+            } else if (value == GLX_SLOW_VISUAL_EXT) {
+                egl_config->config_caveat = EGL_SLOW_CONFIG;
+            } else {
+                return EGL_FALSE;
+            }
+        }
+    }
     egl_config->config_id = config_id;
     egl_config->conformant = EGL_OPENGL_BIT;
     egl_config->renderable_type = EGL_OPENGL_BIT;
@@ -626,6 +637,9 @@ EGLBoolean EGLAPIENTRY eglInitialize (EGLDisplay dpy, EGLint *major,
                 egl_display->is_arb_context_profile = is_extension_supported (extensions,
                                                       "GLX_ARB_create_context_profile");
             }
+            egl_display->is_ext_visual_rating = is_extension_supported (
+                                                    extensions,
+                                                    "GLX_EXT_visual_rating");
             if (allocate_configs (egl_display) != EGL_TRUE) {
                 XCloseDisplay (display);
                 free (egl_display);
