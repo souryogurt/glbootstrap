@@ -432,15 +432,107 @@ static EGLBoolean fbconfig_to_eglconfig (EGL_GLXDisplay *egl_display,
     return EGL_TRUE;
 }
 
+static EGLBoolean visualinfo_to_eglconfig (EGL_GLXDisplay *egl_display,
+        int config_id, EGL_GLXConfig *egl_config, XVisualInfo *info)
+{
+    int value = 0;
+    int err = 0;
+    Display *display = egl_display->x11_display;
+    err = glXGetConfig (display, info, GLX_USE_GL, &value);
+    if (err != 0 || value == False) {
+        return EGL_FALSE;
+    }
+    err = glXGetConfig (display, info, GLX_BUFFER_SIZE,
+                        (int *) &egl_config->buffer_size);
+    if (err == 0) {
+        err = glXGetConfig (display, info, GLX_RED_SIZE,
+                            (int *) &egl_config->red_size);
+    }
+    if (err == 0) {
+        err = glXGetConfig (display, info, GLX_GREEN_SIZE,
+                            (int *) &egl_config->green_size);
+    }
+    if (err == 0) {
+        err = glXGetConfig (display, info, GLX_BLUE_SIZE,
+                            (int *) &egl_config->blue_size);
+    }
+    egl_config->luminance_size = 0;
+    if (err == 0) {
+        err = glXGetConfig (display, info, GLX_ALPHA_SIZE,
+                            (int *) &egl_config->alpha_size);
+    }
+    egl_config->alpha_mask_size = 0;
+    egl_config->bind_to_texture_rgb = 0;
+    egl_config->bind_to_texture_rgba = 0;
+    if (err == 0) {
+        err = glXGetConfig (display, info, GLX_RGBA, &value);
+    }
+    if (err != 0 || value != True) {
+        return EGL_FALSE;
+    }
+    egl_config->color_buffer_type = EGL_RGB_BUFFER;
+    /* TODO: implement EGL_CONFIG_CAVEAT using GLX_EXT_visual_rating */
+    egl_config->config_caveat = EGL_NONE;
+    egl_config->config_id = config_id;
+    egl_config->conformant = EGL_OPENGL_BIT;
+    egl_config->renderable_type = EGL_OPENGL_BIT;
+    if (err == 0) {
+        err = glXGetConfig (display, info, GLX_DEPTH_SIZE,
+                            (int *) &egl_config->depth_size);
+    }
+    if (err == 0) {
+        err = glXGetConfig (display, info, GLX_LEVEL,
+                            (int *) &egl_config->level);
+    }
+    egl_config->max_pbuffer_width = 0;
+    egl_config->max_pbuffer_height = 0;
+    egl_config->max_pbuffer_pixels = 0;
+
+    /* TODO: Implement via GLX_EXT_swap_control
+     *
+     * From GLX_EXT_swap_control specification:
+     * The current swap interval and implementation-dependent max swap
+     * interval for a particular drawable can be obtained by calling
+     * glXQueryDrawable with the attributes GLX_SWAP_INTERVAL_EXT and
+     * GLX_MAX_SWAP_INTERVAL_EXT respectively. The value returned by
+     * glXQueryDrawable is undefined if the drawable is not a GLXWindow
+     * and these attributes are given.
+     */
+    egl_config->max_swap_interval = 1;
+    egl_config->min_swap_interval = 1;
+
+    /* Native rendering is supported, since config is based on XVisualInfo */
+    egl_config->native_renderable = EGL_TRUE;
+    egl_config->native_visual_id = info->visualid;
+
+    /* I'm not sure what is info->class :) */
+    /* TODO: Implement via GLX_EXT_visual_info */
+    egl_config->native_visual_type = info->class;
+
+    /* TODO: Implement via GLX_ARB_multisample */
+    egl_config->sample_buffers = 0;
+    egl_config->samples = 0;
+    if (err == 0) {
+        err = glXGetConfig (display, info, GLX_STENCIL_SIZE,
+                            (int *) &egl_config->stencil_size);
+    }
+    egl_config->surface_type = EGL_WINDOW_BIT | EGL_PIXMAP_BIT;
+
+    /* TODO: Implement via GLX_EXT_visual_info */
+    egl_config->transparent_type = EGL_NONE;
+    return EGL_TRUE;
+}
+
 static EGLBoolean allocate_configs (EGL_GLXDisplay *egl_display)
 {
+    EGL_GLXConfig *configs = NULL;
     if (egl_display->is_modern) {
         int n_glx_configs = 0;
         GLXFBConfig *glx_configs = glXGetFBConfigs (egl_display->x11_display,
                                    egl_display->screen,
                                    &n_glx_configs);
-        EGL_GLXConfig *configs = (EGL_GLXConfig *) calloc ((size_t)n_glx_configs,
-                                 sizeof (EGL_GLXConfig));
+        configs = (EGL_GLXConfig *) calloc ((size_t)n_glx_configs,
+                                            sizeof (EGL_GLXConfig));
         if (configs) {
             int n_configs = 0;
             while (n_glx_configs > 0) {
@@ -457,8 +549,31 @@ static EGLBoolean allocate_configs (EGL_GLXDisplay *egl_display)
             return EGL_FALSE;
         }
     } else {
-        /* TODO: add support for GLX 1.2 */
-        return EGL_FALSE;
+        int n_visualinfo = 0;
+        XVisualInfo info_template = {0};
+        XVisualInfo *info = NULL;
+        info_template.screen = egl_display->screen;
+        info = XGetVisualInfo (egl_display->x11_display, VisualScreenMask,
+                               &info_template, &n_visualinfo);
+        configs = (EGL_GLXConfig *) calloc ((size_t)n_visualinfo,
+                                            sizeof (EGL_GLXConfig));
+        if (configs) {
+            int n_configs = 0;
+            while (n_visualinfo > 0) {
+                n_visualinfo--;
+                if (visualinfo_to_eglconfig (egl_display, n_configs,
+                                             &configs[n_configs],
+                                             &info[n_visualinfo])) {
+                    n_configs++;
+                }
+            }
+            egl_display->configs = configs;
+            egl_display->n_configs = n_configs;
+        } else {
+            XFree (info);
+            return EGL_FALSE;
+        }
+        XFree (info);
     }
     return EGL_TRUE;
 }
