@@ -71,7 +71,7 @@ typedef struct EGL_GLXDisplay {
 
 #define DEFAULT_DISPLAY 1
 #define DISPLAY_TABLE_SIZE 1
-static EGL_GLXDisplay *display_table[DISPLAY_TABLE_SIZE] = { NULL };
+static EGL_GLXDisplay *display_table[DISPLAY_TABLE_SIZE + 1] = { NULL };
 
 #define UNUSED(x) (void)(x)
 
