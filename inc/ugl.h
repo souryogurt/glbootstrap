@@ -1,3 +1,16 @@
+/**
+ * @file ugl.h
+ * Defines public interface to cross-platform interface for OpenGL context
+ * creation.
+ *
+ * To create OpenGL context for particular window, you should:
+ * - create the UGL driver using ugl_create()
+ * - choose best framebuffer configuration using ugl_choose_framebuffer_config()
+ * - create the window using this configuration
+ * - create rendering surface associated with new window using
+ *   ugl_create_window_render_surface() function
+ * - Make the surface to be current for this window using ugl_make_current()
+ */
 #ifndef UGL_H
 #define UGL_H
 
@@ -22,6 +35,8 @@ typedef Window UGLNativeWindow;
 #define UGL_DEPTH_SIZE 0x3025
 #define UGL_STENCIL_SIZE 0x3026
 #define UGL_NATIVE_VISUAL_ID 0x302E
+
+#define UGL_NUMBER_OF_ATTRIBUTES 7
 
 #ifdef __cplusplus
 extern "C" {

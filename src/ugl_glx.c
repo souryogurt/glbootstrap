@@ -1,8 +1,16 @@
-#include "ugl.h"
-#include <GL/glx.h>
-#include <string.h>
+/**
+ * @file ugl_glx.c
+ * Implementation of universal opengl context creation interface using GLX.
+ */
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
 #include <stdlib.h>
+#include <string.h>
+#include <GL/glx.h>
+#include "ugl.h"
 
+/** GLX implementation of UGL type */
 struct UGL {
     PFNGLXCREATECONTEXTATTRIBSARBPROC glXCreateContextAttribsARB;
     Display *display; /**< Connection to X11 display */
@@ -14,6 +22,7 @@ struct UGL {
     char padding[4];
 };
 
+/** GLX implementation of UGLRenderSurface */
 struct UGLRenderSurface {
     GLXContext context; /**<Native OpenGL context */
     GLXDrawable drawable; /**<Native drawable */
@@ -54,7 +63,6 @@ int ugl_make_current (const UGL *ugl, const UGLRenderSurface *surface)
         drawable = surface->drawable;
         context = surface->context;
     }
-    /* Make context current */
     if (ugl->is_modern) {
         return glXMakeContextCurrent (ugl->display, drawable, drawable,
                                       context) == True;
@@ -71,7 +79,10 @@ UGLRenderSurface *ugl_create_window_render_surface (const UGL *ugl,
     /* Creating openGL context */
     if (ugl->is_modern) {
         GLXFBConfig glx_config = (GLXFBConfig)config;
+        /* GLX1.3 requires to create GLXWindow associated with window */
         drawable = glXCreateWindow (ugl->display, glx_config, window, NULL);
+        /* First try to create OpenGL context using GLX_ARB_create_context
+         * extension */
         if (ugl->glXCreateContextAttribsARB) {
             int context_attribs[] = {
                 GLX_CONTEXT_MAJOR_VERSION_ARB, 1,
@@ -81,6 +92,8 @@ UGLRenderSurface *ugl_create_window_render_surface (const UGL *ugl,
             context = ugl->glXCreateContextAttribsARB (ugl->display, glx_config,
                       NULL, True, context_attribs);
         } else {
+            /* If theare no GLX_ARB_create_context extension, then fall back to
+             * standard GLX1.3 way */
             context = glXCreateNewContext (ugl->display, glx_config,
                                            GLX_RGBA_TYPE, NULL, True);
         }
@@ -166,6 +179,8 @@ static int legacy_attribs[] = {
     GLX_DOUBLEBUFFER, True,
 };
 
+#define MAX_NUMBER_OF_DEFAULT_ATTRIBUTES 4
+
 /** Convert array of UGL attributes to array of GLX FB attributes
  * @param fb_attribute output array
  * @param attributes array of ugl attributes
@@ -207,7 +222,8 @@ UGLFrameBufferConfig *ugl_choose_framebuffer_config (const UGL *ugl,
         const int *attributes)
 {
     UGLFrameBufferConfig *config = NULL;
-    int fb_attributes[8 + 12 + 1] = {None};
+    int fb_attributes[ (MAX_NUMBER_OF_DEFAULT_ATTRIBUTES +
+                        UGL_NUMBER_OF_ATTRIBUTES) * 2] = {None};
     if (ugl->is_modern) {
         int fbcount = 0;
         GLXFBConfig *fbc = NULL;

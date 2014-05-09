@@ -1,3 +1,11 @@
+/**
+ * @file main_x11.c
+ * This module contains entry point and initialization for X11 variant
+ * of application.
+ */
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
 #include <stdlib.h>
 #include <stdio.h>
 #include <getopt.h>
@@ -5,26 +13,24 @@
 #include <X11/Xutil.h>
 #include "ugl.h"
 
-#define PACKAGE_STRING "glbootstrap 0.1"
-#define PACKAGE_BUGREPORT "egor.artemov@gmail.com"
-
 /** Window type */
 typedef struct game_window_t {
-    Display *display;
-    Atom wm_delete_window;
-    Window xwindow;
-    Colormap cmap;
-    int is_closed;
-    int width;
-    int height;
+    Display *display; /**< X11 connection for this window */
+    Atom wm_delete_window; /**< Atom to receive "window closed" message */
+    Window xwindow; /**< Native X11 window */
+    int is_closed; /**< true if window is closed */
+    int width; /**< Width of window's client area */
+    int height; /**< Height of window's client area */
     char padding[4];
 } game_window_t;
 
+/** Single application's main window */
 static game_window_t *main_window = NULL;
 
 /** The name the program was run with */
 static const char *program_name;
 
+/** Flag that indicates to be verbose as possible */
 static int verbose = 0;
 
 /** License text to show when application is runned with --version flag */
@@ -53,10 +59,8 @@ static void print_framebuffer_attribute_int (const UGL *ugl,
         UGLFrameBufferConfig *ugl_config, unsigned int attribute,
         const char *attribute_name)
 {
-    int success;
     unsigned int value;
-    success = ugl_get_config_attribute (ugl, ugl_config, attribute, &value);
-    if (success) {
+    if (ugl_get_config_attribute (ugl, ugl_config, attribute, &value) ) {
         printf ("  %s:\t %u\n", attribute_name, value);
     } else {
         printf ("  %s:\t Unknown\n", attribute_name);
@@ -80,8 +84,8 @@ static void print_usage (void)
  */
 static void window_process_events (game_window_t *window)
 {
-    int count = XPending (window->display);
-    while (count > 0) {
+    int n_events = XPending (window->display);
+    while (n_events > 0) {
         XEvent event;
         XNextEvent (window->display, &event);
         if (event.type == ClientMessage) {
@@ -98,7 +102,7 @@ static void window_process_events (game_window_t *window)
                 /*game_resize (window->width, window->height);*/
             }
         }
-        count--;
+        n_events--;
     }
 }
 
@@ -117,7 +121,6 @@ static void window_destroy (game_window_t *window)
 {
     if (window != NULL) {
         XDestroyWindow (window->display, window->xwindow);
-        XFreeColormap (window->display, window->cmap);
         free (window);
     }
 }
@@ -132,9 +135,9 @@ static Window window_get_native (game_window_t *window)
 
 /** Create and display new window
  * @param display The display where window should be created
- * @param caption The caption of window
- * @param width The width of the window
- * @param height The height of the window
+ * @param caption The caption of window in Host Portable Character Encoding
+ * @param width The width of the window's client area
+ * @param height The height of the window's client area
  * @param visual_id VisualID of Visual that should be used to create a window
  * @returns new window object, NULL otherwise
  */
@@ -142,36 +145,35 @@ static game_window_t *window_create (Display *display, const char *caption,
                                      unsigned int width, unsigned int height,
                                      VisualID visual_id)
 {
-    int num_visuals;
-    XVisualInfo *vi = NULL;
+    int n_visuals;
+    XVisualInfo *info = NULL;
     game_window_t *window = NULL;
-    XVisualInfo vi_template;
-    vi_template.visualid = visual_id;
-    vi = XGetVisualInfo (display, VisualIDMask, &vi_template, &num_visuals);
-    if (vi == NULL) {
+    XVisualInfo info_template;
+    info_template.visualid = visual_id;
+    info = XGetVisualInfo (display, VisualIDMask, &info_template, &n_visuals);
+    if (info == NULL) {
         return NULL;
     }
 
     window = (game_window_t *)malloc (sizeof (game_window_t));
     if (window != NULL) {
-        const unsigned long valuemask = CWBorderPixel | CWColormap |
-                                        CWEventMask;
-        XSetWindowAttributes swa;
-        Window root = RootWindow (display, vi->screen);
+        const unsigned long attributes_mask = CWBorderPixel | CWColormap |
+                                              CWEventMask;
+        XSetWindowAttributes window_attributes;
+        Window root = RootWindow (display, info->screen);
         window->display = display;
         window->is_closed = 0;
         window->width = 0;
         window->height = 0;
-        window->cmap = XCreateColormap (display, root, vi->visual, AllocNone);
-        swa.colormap = window->cmap;
-        swa.background_pixmap = None;
-        swa.border_pixel = 0;
-        swa.event_mask = StructureNotifyMask;
-        window->xwindow = XCreateWindow (display,
-                                         RootWindow (display, vi->screen),
-                                         0, 0, width, height, 0, vi->depth,
-                                         InputOutput, vi->visual, valuemask,
-                                         &swa);
+        window_attributes.colormap = XCreateColormap (display, root,
+                                     info->visual, AllocNone);
+        window_attributes.background_pixmap = None;
+        window_attributes.border_pixel = 0;
+        window_attributes.event_mask = StructureNotifyMask;
+        window->xwindow = XCreateWindow (display, root, 0, 0, width, height,
+                                         0, info->depth, InputOutput,
+                                         info->visual, attributes_mask,
+                                         &window_attributes);
         XStoreName (display, window->xwindow, caption);
         XMapWindow (display, window->xwindow);
         window->wm_delete_window = XInternAtom (display, "WM_DELETE_WINDOW",
@@ -179,7 +181,7 @@ static game_window_t *window_create (Display *display, const char *caption,
         XSetWMProtocols (display, window->xwindow,
                          &window->wm_delete_window, 1);
     }
-    XFree (vi);
+    XFree (info);
     return window;
 }
 
