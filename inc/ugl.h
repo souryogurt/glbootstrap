@@ -50,7 +50,7 @@ UGL *ugl_create (void *display_id);
 
 /** Choose framebuffer configuration based on specified attributes
  * @param ugl pointer to universal OpenGL interface object
- * @param attributes the array of GLX 1.3 attributes
+ * @param attributes the array of UGL attributes and values that ends with None
  * @returns framebuffer configuration object
  */
 UGLFrameBufferConfig *ugl_choose_framebuffer_config (const UGL *ugl,
