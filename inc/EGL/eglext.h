@@ -33,12 +33,12 @@ extern "C" {
 ** used to make the header, and the header can be found at
 **   http://www.opengl.org/registry/
 **
-** Khronos $Revision: 25997 $ on $Date: 2014-03-18 22:40:11 -0700 (Tue, 18 Mar 2014) $
+** Khronos $Revision: 26290 $ on $Date: 2014-04-16 05:35:38 -0700 (Wed, 16 Apr 2014) $
 */
 
 #include <EGL/eglplatform.h>
 
-#define EGL_EGLEXT_VERSION 20140318
+#define EGL_EGLEXT_VERSION 20140416
 
 /* Generated C header for:
  * API: egl
@@ -563,6 +563,27 @@ EGLAPI EGLBoolean EGLAPIENTRY eglExportDRMImageMESA (EGLDisplay dpy, EGLImageKHR
 #define EGL_MESA_platform_gbm 1
 #define EGL_PLATFORM_GBM_MESA             0x31D7
 #endif /* EGL_MESA_platform_gbm */
+
+#ifndef EGL_NOK_swap_region
+#define EGL_NOK_swap_region 1
+typedef EGLBoolean (EGLAPIENTRYP PFNEGLSWAPBUFFERSREGIONNOKPROC) (EGLDisplay dpy, EGLSurface surface, EGLint numRects, const EGLint *rects);
+#ifdef EGL_EGLEXT_PROTOTYPES
+EGLAPI EGLBoolean EGLAPIENTRY eglSwapBuffersRegionNOK (EGLDisplay dpy, EGLSurface surface, EGLint numRects, const EGLint *rects);
+#endif
+#endif /* EGL_NOK_swap_region */
+
+#ifndef EGL_NOK_swap_region2
+#define EGL_NOK_swap_region2 1
+typedef EGLBoolean (EGLAPIENTRYP PFNEGLSWAPBUFFERSREGION2NOKPROC) (EGLDisplay dpy, EGLSurface surface, EGLint numRects, const EGLint *rects);
+#ifdef EGL_EGLEXT_PROTOTYPES
+EGLAPI EGLBoolean EGLAPIENTRY eglSwapBuffersRegion2NOK (EGLDisplay dpy, EGLSurface surface, EGLint numRects, const EGLint *rects);
+#endif
+#endif /* EGL_NOK_swap_region2 */
+
+#ifndef EGL_NOK_texture_from_pixmap
+#define EGL_NOK_texture_from_pixmap 1
+#define EGL_Y_INVERTED_NOK                0x307F
+#endif /* EGL_NOK_texture_from_pixmap */
 
 #ifndef EGL_NV_3dvision_surface
 #define EGL_NV_3dvision_surface 1
