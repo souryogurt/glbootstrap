@@ -11,7 +11,7 @@
 #include <getopt.h>
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
-#include "ugl.h"
+#include <EGL/egl.h>
 
 /** Window type */
 typedef struct game_window_t {
@@ -49,19 +49,20 @@ static struct option const long_options[] = {
     {NULL, 0, NULL, 0}
 };
 
+
 /** Print attribute of framebuffer configuration as unsigned int
- * @param ugl pointer to universal OpenGL interface object
- * @param ugl_config pointer to framebuffer configuration object
+ * @param egl_display EGL display object
+ * @param config EGL framebuffer configuration
  * @param attribute framebuffer's attribute to print
  * @param attribute_name human readable name of attribute
  */
-static void print_framebuffer_attribute_int (const UGL *ugl,
-        UGLFrameBufferConfig *ugl_config, unsigned int attribute,
+static void print_framebuffer_attribute_int (const EGLDisplay egl_display,
+        EGLConfig config, EGLint attribute,
         const char *attribute_name)
 {
-    unsigned int value;
-    if (ugl_get_config_attribute (ugl, ugl_config, attribute, &value) ) {
-        printf ("  %s:\t %u\n", attribute_name, value);
+    EGLint value;
+    if (eglGetConfigAttrib (egl_display, config, attribute, &value) == EGL_TRUE) {
+        printf ("  %s:\t %u\n", attribute_name, (unsigned int) value);
     } else {
         printf ("  %s:\t Unknown\n", attribute_name);
     }
@@ -186,32 +187,31 @@ static game_window_t *window_create (Display *display, const char *caption,
 }
 
 /** Print configuration of selected framebuffer
- * @param ugl pointer to universal OpenGL interface object
- * @param ugl_config pointer to framebuffer configuration object
+ * @param egl_display EGL display object
+ * @param config EGL framebuffer configuration
  */
-static void print_framebuffer_configuration (const UGL *ugl,
-        UGLFrameBufferConfig *ugl_config)
+static void print_framebuffer_configuration (const EGLDisplay egl_display,
+        EGLConfig config)
 {
-    int success;
-    unsigned int value;
+    EGLint value;
     printf ("Framebuffer configuration:\n");
-    success = ugl_get_config_attribute (ugl, ugl_config, UGL_NATIVE_VISUAL_ID,
-                                        &value);
-    if (success) {
+    if (eglGetConfigAttrib (egl_display, config, EGL_NATIVE_VISUAL_ID,
+                            &value) == EGL_TRUE) {
         printf ("  VisualID:\t 0x%03X\n", value);
     } else {
         printf ("  VisualID:\t Unknown\n");
     }
-    print_framebuffer_attribute_int (ugl, ugl_config, UGL_RED_SIZE, "Red Size");
-    print_framebuffer_attribute_int (ugl, ugl_config, UGL_GREEN_SIZE,
+    print_framebuffer_attribute_int (egl_display, config, EGL_RED_SIZE,
+                                     "Red Size");
+    print_framebuffer_attribute_int (egl_display, config, EGL_GREEN_SIZE,
                                      "Green Size");
-    print_framebuffer_attribute_int (ugl, ugl_config, UGL_BLUE_SIZE,
+    print_framebuffer_attribute_int (egl_display, config, EGL_BLUE_SIZE,
                                      "Blue Size");
-    print_framebuffer_attribute_int (ugl, ugl_config, UGL_ALPHA_SIZE,
+    print_framebuffer_attribute_int (egl_display, config, EGL_ALPHA_SIZE,
                                      "Alpha Size");
-    print_framebuffer_attribute_int (ugl, ugl_config, UGL_DEPTH_SIZE,
+    print_framebuffer_attribute_int (egl_display, config, EGL_DEPTH_SIZE,
                                      "Depth Size");
-    print_framebuffer_attribute_int (ugl, ugl_config, UGL_STENCIL_SIZE,
+    print_framebuffer_attribute_int (egl_display, config, EGL_STENCIL_SIZE,
                                      "Stencil Size");
 }
 
@@ -243,82 +243,120 @@ static void parse_args (int argc, char *const *argv)
 
 int main (int argc, char *const *argv)
 {
-    static const int attribs[] = {
-        UGL_RED_SIZE, 8,
-        UGL_GREEN_SIZE, 8,
-        UGL_BLUE_SIZE, 8,
-        UGL_ALPHA_SIZE, 8,
-        UGL_DEPTH_SIZE, 16,
-        UGL_STENCIL_SIZE, 8,
-        None
+    static const EGLint egl_attributes[] = {
+        EGL_RED_SIZE, 8,
+        EGL_GREEN_SIZE, 8,
+        EGL_BLUE_SIZE, 8,
+        EGL_ALPHA_SIZE, 8,
+        EGL_DEPTH_SIZE, 16,
+        EGL_STENCIL_SIZE, 8,
+        EGL_CONFORMANT, EGL_OPENGL_BIT,
+        EGL_NATIVE_RENDERABLE, EGL_TRUE,
+        EGL_RENDERABLE_TYPE, EGL_OPENGL_BIT,
+        EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
+        EGL_NONE
     };
-    UGL *ugl = NULL;
-    UGLFrameBufferConfig *ugl_config = NULL;
-    UGLRenderSurface *surface = NULL;
+    EGLDisplay egl_display;
+    EGLint egl_major, egl_minor;
+    EGLBoolean err;
+    EGLConfig config;
+    EGLint n_configs;
+    EGLContext context;
+    EGLSurface window_surface;
     VisualID visual_id = 0;
     Display *display = NULL;
 
     parse_args (argc, argv);
 
-    if ((ugl = ugl_create (NULL)) == NULL) {
+    egl_display = eglGetDisplay (EGL_DEFAULT_DISPLAY);
+    if (egl_display == EGL_NO_DISPLAY) {
+        fprintf (stderr, "%s: no matching EGL_DEFAULT_DISPLAY is available\n",
+                 program_name);
+        return EXIT_FAILURE;
+    }
+    if (eglInitialize (egl_display, &egl_major, &egl_minor) != EGL_TRUE) {
+        fprintf (stderr, "%s: can't initialize EGL on a display\n",
+                 program_name);
         return EXIT_FAILURE;
     }
 
-    if ((ugl_config = ugl_choose_framebuffer_config (ugl, attribs)) == NULL) {
+    err = eglChooseConfig (egl_display, egl_attributes, &config, 1, &n_configs);
+    if (err != EGL_TRUE) {
         fprintf (stderr, "%s: can't retrieve a framebuffer config\n",
                  program_name);
-        ugl_free (ugl);
+        eglTerminate (egl_display);
         return EXIT_FAILURE;
     }
-    if (!ugl_get_config_attribute (ugl, ugl_config, UGL_NATIVE_VISUAL_ID,
-                                   &visual_id)) {
+    err = eglGetConfigAttrib (egl_display, config, EGL_NATIVE_VISUAL_ID,
+                              (EGLint *)&visual_id);
+    if (err == EGL_FALSE) {
         fprintf (stderr, "%s: can't retrieve a visual\n", program_name);
-        ugl_free_framebuffer_config (ugl, ugl_config);
-        ugl_free (ugl);
+        eglTerminate (egl_display);
         return EXIT_FAILURE;
     }
 
     if (verbose) {
-        print_framebuffer_configuration (ugl, ugl_config);
+        print_framebuffer_configuration (egl_display, config);
     }
 
     display = XOpenDisplay (NULL);
     if (display == NULL) {
         fprintf (stderr, "%s: can't connect to X server\n", program_name);
+        eglTerminate (egl_display);
         return EXIT_FAILURE;
     }
 
     main_window = window_create (display, "OpenGL Window", 640, 480, visual_id);
     if (main_window == NULL) {
         fprintf (stderr, "%s: can't create game window\n", program_name);
-        ugl_free_framebuffer_config (ugl, ugl_config);
-        ugl_free (ugl);
         XCloseDisplay (display);
+        eglTerminate (egl_display);
         return EXIT_FAILURE;
     }
 
-    surface = ugl_create_window_render_surface (ugl, ugl_config,
-              (UGLNativeWindow)window_get_native (main_window));
-    if (surface == NULL) {
-        fprintf (stderr, "%s: can't create rendering surface\n", program_name);
+    err = eglBindAPI (EGL_OPENGL_API);
+    if (err != EGL_TRUE) {
+        fprintf (stderr, "%s: can't bind OpenGL API\n", program_name);
         window_destroy (main_window);
-        ugl_free_framebuffer_config (ugl, ugl_config);
-        ugl_free (ugl);
-        XCloseDisplay (display);
+        eglTerminate (egl_display);
         return EXIT_FAILURE;
     }
-    ugl_make_current (ugl, surface);
+    context = eglCreateContext (egl_display, config, EGL_NO_CONTEXT, NULL);
+    if (context == EGL_NO_CONTEXT) {
+        fprintf (stderr, "%s: can't create OpenGL context\n", program_name);
+        window_destroy (main_window);
+        eglTerminate (egl_display);
+        return EXIT_FAILURE;
+    }
+    window_surface = eglCreateWindowSurface (egl_display, config,
+                     (NativeWindowType) window_get_native (main_window), NULL);
+    if (window_surface == EGL_NO_SURFACE) {
+        fprintf (stderr, "%s: can't create rendering surface\n", program_name);
+        eglDestroyContext (egl_display, context);
+        window_destroy (main_window);
+        eglTerminate (egl_display);
+        return EXIT_FAILURE;
+    }
+    err = eglMakeCurrent (egl_display, window_surface, window_surface, context);
+    if (err == EGL_FALSE) {
+        fprintf (stderr, "%s: can't make OpenGL context be current\n",
+                 program_name);
+        eglDestroyContext (egl_display, context);
+        window_destroy (main_window);
+        eglTerminate (egl_display);
+        return EXIT_FAILURE;
+    }
 
     while (window_is_exists (main_window)) {
         window_process_events (main_window);
         /*game_tick();*/
-        ugl_swap_buffers (ugl, surface);
+        eglSwapBuffers (egl_display, window_surface);
     }
-    ugl_make_current (ugl, NULL);
-    ugl_free_render_surface (ugl, surface);
+    eglMakeCurrent (egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+    eglDestroySurface (egl_display, window_surface);
+    eglDestroyContext (egl_display, context);
     window_destroy (main_window);
-    ugl_free_framebuffer_config (ugl, ugl_config);
-    ugl_free (ugl);
     XCloseDisplay (display);
+    eglTerminate (egl_display);
     return EXIT_SUCCESS;
 }
