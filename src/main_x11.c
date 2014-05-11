@@ -215,6 +215,28 @@ static void print_framebuffer_configuration (const EGLDisplay egl_display,
                                      "Stencil Size");
 }
 
+/** Print full list of available configurations
+ * @param egl_display EGL display where configurations should be retreived
+ */
+static void print_available_configurations (const EGLDisplay egl_display)
+{
+    EGLint n_configs = 0;
+    EGLConfig *configs = NULL;
+    if (eglGetConfigs (egl_display, NULL, 0, &n_configs) == EGL_FALSE) {
+        return;
+    }
+    configs = (EGLConfig *)calloc ((size_t)n_configs, sizeof (EGLConfig));
+    if (configs) {
+        eglGetConfigs (egl_display, configs, n_configs, &n_configs);
+        printf ("Available configurations:\n");
+        while (n_configs > 0) {
+            n_configs--;
+            print_framebuffer_configuration (egl_display, configs[n_configs]);
+        }
+        free (configs);
+    }
+}
+
 /** Parse command-line arguments
  * @param argc number of arguments passed to main()
  * @param argv array of arguments passed to main()
@@ -278,6 +300,10 @@ int main (int argc, char *const *argv)
         fprintf (stderr, "%s: can't initialize EGL on a display\n",
                  program_name);
         return EXIT_FAILURE;
+    }
+
+    if (verbose) {
+        print_available_configurations (egl_display);
     }
 
     err = eglChooseConfig (egl_display, egl_attributes, &config, 1, &n_configs);
