@@ -169,8 +169,8 @@ static game_window_t *window_create (Display *display, const char *caption,
 }
 
 /** Print configuration of selected framebuffer
- * @param egl_display EGL display object
- * @param config EGL framebuffer configuration
+ * @param d EGL display object
+ * @param c EGL framebuffer configuration
  */
 static void print_framebuffer_configuration (const EGLDisplay d, EGLConfig c)
 {

@@ -73,21 +73,29 @@ typedef struct EGL_GLXDisplay {
 static EGL_GLXDisplay *display_table[DISPLAY_TABLE_SIZE] = { NULL };
 
 #define CHECK_EGLDISPLAY(dpy) { \
-    if (((EGL_GLXDisplay **)dpy < display_table) \
-            || ((EGL_GLXDisplay **)dpy >= &display_table[DISPLAY_TABLE_SIZE])) { \
-        eglSetError (EGL_BAD_DISPLAY); \
-        return EGL_FALSE; \
-    } \
-    }while(0)
+if (((EGL_GLXDisplay **)dpy < display_table) \
+      || ((EGL_GLXDisplay **)dpy >= &display_table[DISPLAY_TABLE_SIZE])) { \
+    eglSetError (EGL_BAD_DISPLAY); \
+    return EGL_FALSE; \
+} \
+}while(0)
 
 #define PEGLGLXDISPLAY(dpy) (*(EGL_GLXDisplay**)dpy)
 
 #define CHECK_EGLDISPLAY_INITIALIZED(dpy) { \
-    if ((*(EGL_GLXDisplay**)dpy) == NULL) { \
-        eglSetError (EGL_NOT_INITIALIZED); \
-        return EGL_FALSE; \
-    } \
-    } while(0)
+if ((*(EGL_GLXDisplay**)dpy) == NULL) { \
+    eglSetError (EGL_NOT_INITIALIZED); \
+    return EGL_FALSE; \
+} \
+} while(0)
+
+#define CHECK_EGLCONFIG(dpy, config) { \
+if (((EGL_GLXConfig*)(config) < (*(EGL_GLXDisplay**)(dpy))->configs) || \
+    ((EGL_GLXConfig*)(config) >= &(*(EGL_GLXDisplay**)(dpy))->configs[(*(EGL_GLXDisplay**)(dpy))->n_configs])){ \
+    eglSetError (EGL_BAD_PARAMETER); \
+    return EGL_FALSE; \
+} \
+}while(0)
 
 #define UNUSED(x) (void)(x)
 
@@ -160,17 +168,16 @@ EGLBoolean EGLAPIENTRY eglDestroySurface (EGLDisplay dpy, EGLSurface surface)
 EGLBoolean EGLAPIENTRY eglGetConfigAttrib (EGLDisplay dpy, EGLConfig config,
         EGLint attribute, EGLint *value)
 {
-    EGL_GLXDisplay *egl_display = NULL;
     EGL_GLXConfig *egl_config = NULL;
     CHECK_EGLDISPLAY (dpy);
     CHECK_EGLDISPLAY_INITIALIZED (dpy);
-    egl_display = PEGLGLXDISPLAY (dpy);
+    CHECK_EGLCONFIG (dpy, config);
+    egl_config = (EGL_GLXConfig *)config;
 
-    if ((config >= (EGLConfig) egl_display->n_configs) || (value == NULL)) {
+    if (value == NULL) {
         eglSetError (EGL_BAD_PARAMETER);
         return EGL_FALSE;
     }
-    egl_config = &egl_display->configs[ (size_t)config];
     switch (attribute) {
         case EGL_BUFFER_SIZE:
             *value = egl_config->buffer_size;
@@ -596,7 +603,7 @@ EGLBoolean EGLAPIENTRY eglGetConfigs (EGLDisplay dpy, EGLConfig *configs,
     }
     for (*num_config = 0; (*num_config < config_size)
             && (*num_config < egl_display->n_configs); *num_config += 1) {
-        configs[*num_config] = (EGLConfig) (*num_config);
+        configs[*num_config] = (EGLConfig) &egl_display->configs[*num_config];
     }
     eglSetError (EGL_SUCCESS);
     return EGL_TRUE;
