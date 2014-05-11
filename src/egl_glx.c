@@ -37,19 +37,16 @@ typedef struct EGL_GLXDisplay {
 #define DISPLAY_TABLE_SIZE 1
 static EGL_GLXDisplay *display_table[DISPLAY_TABLE_SIZE] = { NULL };
 
+#define UNUSED(x) (void)(x)
+
 static void eglSetError (EGLint error)
 {
-
+    UNUSED (error);
 }
 
 EGLBoolean EGLAPIENTRY eglBindAPI (EGLenum api)
 {
-    switch (api) {
-        case EGL_OPENGL_API:
-            return EGL_FALSE;
-        default:
-            return EGL_FALSE;
-    }
+    UNUSED (api);
     /*TODO: Set last EGL error for this thread */
     return EGL_FALSE;
 }
@@ -59,6 +56,11 @@ EGLBoolean EGLAPIENTRY eglChooseConfig (EGLDisplay dpy,
                                         EGLConfig *configs, EGLint config_size,
                                         EGLint *num_config)
 {
+    UNUSED (dpy);
+    UNUSED (attrib_list);
+    UNUSED (configs);
+    UNUSED (config_size);
+    UNUSED (num_config);
     /*TODO: Set last EGL error for this thread */
     return EGL_FALSE;
 }
@@ -67,6 +69,10 @@ EGLContext EGLAPIENTRY eglCreateContext (EGLDisplay dpy, EGLConfig config,
         EGLContext share_context,
         const EGLint *attrib_list)
 {
+    UNUSED (dpy);
+    UNUSED (config);
+    UNUSED (share_context);
+    UNUSED (attrib_list);
     /*TODO: Set last EGL error for this thread */
     return EGL_NO_CONTEXT;
 }
@@ -75,18 +81,26 @@ EGLSurface EGLAPIENTRY eglCreateWindowSurface (EGLDisplay dpy, EGLConfig config,
         EGLNativeWindowType win,
         const EGLint *attrib_list)
 {
+    UNUSED (dpy);
+    UNUSED (config);
+    UNUSED (win);
+    UNUSED (attrib_list);
     /*TODO: Set last EGL error for this thread */
     return EGL_NO_SURFACE;
 }
 
 EGLBoolean EGLAPIENTRY eglDestroyContext (EGLDisplay dpy, EGLContext ctx)
 {
+    UNUSED (dpy);
+    UNUSED (ctx);
     /*TODO: Set last EGL error for this thread */
     return EGL_FALSE;
 }
 
 EGLBoolean EGLAPIENTRY eglDestroySurface (EGLDisplay dpy, EGLSurface surface)
 {
+    UNUSED (dpy);
+    UNUSED (surface);
     /*TODO: Set last EGL error for this thread */
     return EGL_FALSE;
 }
@@ -94,6 +108,10 @@ EGLBoolean EGLAPIENTRY eglDestroySurface (EGLDisplay dpy, EGLSurface surface)
 EGLBoolean EGLAPIENTRY eglGetConfigAttrib (EGLDisplay dpy, EGLConfig config,
         EGLint attribute, EGLint *value)
 {
+    UNUSED (dpy);
+    UNUSED (config);
+    UNUSED (attribute);
+    UNUSED (value);
     /*TODO: Set last EGL error for this thread */
     return EGL_FALSE;
 }
@@ -195,12 +213,25 @@ EGLBoolean EGLAPIENTRY eglInitialize (EGLDisplay dpy, EGLint *major,
 EGLBoolean EGLAPIENTRY eglMakeCurrent (EGLDisplay dpy, EGLSurface draw,
                                        EGLSurface read, EGLContext ctx)
 {
+    UNUSED (dpy);
+    UNUSED (draw);
+    UNUSED (read);
+    UNUSED (ctx);
     /*TODO: Set last EGL error for this thread */
     return EGL_FALSE;
 }
 
 const char *EGLAPIENTRY eglQueryString (EGLDisplay dpy, EGLint name)
 {
+    if ((dpy < (EGLDisplay)DEFAULT_DISPLAY) ||
+            (dpy > (EGLDisplay)DISPLAY_TABLE_SIZE)) {
+        eglSetError (EGL_BAD_DISPLAY);
+        return EGL_FALSE;
+    }
+    if (display_table[ (unsigned long)dpy] == NULL) {
+        eglSetError (EGL_NOT_INITIALIZED);
+        return EGL_FALSE;
+    }
     switch (name) {
         case EGL_CLIENT_APIS:
             return "OpenGL";
@@ -218,6 +249,8 @@ const char *EGLAPIENTRY eglQueryString (EGLDisplay dpy, EGLint name)
 
 EGLBoolean EGLAPIENTRY eglSwapBuffers (EGLDisplay dpy, EGLSurface surface)
 {
+    UNUSED (dpy);
+    UNUSED (surface);
     /*TODO: Set last EGL error for this thread */
     return EGL_FALSE;
 }
