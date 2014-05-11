@@ -69,9 +69,25 @@ typedef struct EGL_GLXDisplay {
     int is_arb_context_profile; /**< Is GLX_ARB_create_context_profile there*/
 } EGL_GLXDisplay;
 
-#define DEFAULT_DISPLAY 1
 #define DISPLAY_TABLE_SIZE 1
-static EGL_GLXDisplay *display_table[DISPLAY_TABLE_SIZE + 1] = { NULL };
+static EGL_GLXDisplay *display_table[DISPLAY_TABLE_SIZE] = { NULL };
+
+#define CHECK_EGLDISPLAY(dpy) { \
+    if (((EGL_GLXDisplay **)dpy < display_table) \
+            || ((EGL_GLXDisplay **)dpy >= &display_table[DISPLAY_TABLE_SIZE])) { \
+        eglSetError (EGL_BAD_DISPLAY); \
+        return EGL_FALSE; \
+    } \
+    }while(0)
+
+#define PEGLGLXDISPLAY(dpy) (*(EGL_GLXDisplay**)dpy)
+
+#define CHECK_EGLDISPLAY_INITIALIZED(dpy) { \
+    if ((*(EGL_GLXDisplay**)dpy) == NULL) { \
+        eglSetError (EGL_NOT_INITIALIZED); \
+        return EGL_FALSE; \
+    } \
+    } while(0)
 
 #define UNUSED(x) (void)(x)
 
@@ -146,16 +162,10 @@ EGLBoolean EGLAPIENTRY eglGetConfigAttrib (EGLDisplay dpy, EGLConfig config,
 {
     EGL_GLXDisplay *egl_display = NULL;
     EGL_GLXConfig *egl_config = NULL;
-    if ((dpy < (EGLDisplay)DEFAULT_DISPLAY) ||
-            (dpy > (EGLDisplay)DISPLAY_TABLE_SIZE)) {
-        eglSetError (EGL_BAD_DISPLAY);
-        return EGL_FALSE;
-    }
-    if (display_table[ (unsigned long)dpy] == NULL) {
-        eglSetError (EGL_NOT_INITIALIZED);
-        return EGL_FALSE;
-    }
-    egl_display = display_table[ (unsigned long)dpy];
+    CHECK_EGLDISPLAY (dpy);
+    CHECK_EGLDISPLAY_INITIALIZED (dpy);
+    egl_display = PEGLGLXDISPLAY (dpy);
+
     if ((config >= (EGLConfig) egl_display->n_configs) || (value == NULL)) {
         eglSetError (EGL_BAD_PARAMETER);
         return EGL_FALSE;
@@ -272,8 +282,7 @@ EGLDisplay EGLAPIENTRY eglGetDisplay (EGLNativeDisplayType display_id)
         return EGL_NO_DISPLAY;
     }
     eglSetError (EGL_SUCCESS);
-    /* Return index within display_table array */
-    return (EGLDisplay)1;
+    return (EGLDisplay)&display_table[0];
 }
 
 /** Check that extension is in a list
@@ -450,13 +459,8 @@ static EGLBoolean allocate_configs (EGL_GLXDisplay *egl_display)
 EGLBoolean EGLAPIENTRY eglInitialize (EGLDisplay dpy, EGLint *major,
                                       EGLint *minor)
 {
-    if ((dpy < (EGLDisplay)DEFAULT_DISPLAY) ||
-            (dpy > (EGLDisplay)DISPLAY_TABLE_SIZE)) {
-        eglSetError (EGL_BAD_DISPLAY);
-        return EGL_FALSE;
-    }
-
-    if (display_table[ (unsigned long)dpy] == NULL) {
+    CHECK_EGLDISPLAY (dpy);
+    if (PEGLGLXDISPLAY (dpy) == NULL) {
         int glx_major = 0;
         int glx_minor = 0;
         EGL_GLXDisplay *egl_display = NULL;
@@ -503,7 +507,7 @@ EGLBoolean EGLAPIENTRY eglInitialize (EGLDisplay dpy, EGLint *major,
                 eglSetError (EGL_NOT_INITIALIZED);
                 return EGL_FALSE;
             }
-            display_table[ (unsigned long)dpy] = egl_display;
+            PEGLGLXDISPLAY (dpy) = egl_display;
         } else {
             eglSetError (EGL_NOT_INITIALIZED);
             return EGL_FALSE;
@@ -529,15 +533,8 @@ EGLBoolean EGLAPIENTRY eglMakeCurrent (EGLDisplay dpy, EGLSurface draw,
 
 const char *EGLAPIENTRY eglQueryString (EGLDisplay dpy, EGLint name)
 {
-    if ((dpy < (EGLDisplay)DEFAULT_DISPLAY) ||
-            (dpy > (EGLDisplay)DISPLAY_TABLE_SIZE)) {
-        eglSetError (EGL_BAD_DISPLAY);
-        return EGL_FALSE;
-    }
-    if (display_table[ (unsigned long)dpy] == NULL) {
-        eglSetError (EGL_NOT_INITIALIZED);
-        return EGL_FALSE;
-    }
+    CHECK_EGLDISPLAY (dpy);
+    CHECK_EGLDISPLAY_INITIALIZED (dpy);
     switch (name) {
         case EGL_CLIENT_APIS:
             return "OpenGL";
@@ -563,18 +560,14 @@ EGLBoolean EGLAPIENTRY eglSwapBuffers (EGLDisplay dpy, EGLSurface surface)
 
 EGLBoolean EGLAPIENTRY eglTerminate (EGLDisplay dpy)
 {
-    if ((dpy < (EGLDisplay)DEFAULT_DISPLAY) ||
-            (dpy > (EGLDisplay)DISPLAY_TABLE_SIZE)) {
-        eglSetError (EGL_BAD_DISPLAY);
-        return EGL_FALSE;
-    }
-
-    if (display_table[ (unsigned long)dpy] != NULL) {
-        EGL_GLXDisplay *egl_display = display_table[ (unsigned long)dpy];
+    EGL_GLXDisplay *egl_display = NULL;
+    CHECK_EGLDISPLAY (dpy);
+    egl_display = PEGLGLXDISPLAY (dpy);
+    if (egl_display != NULL) {
         XCloseDisplay (egl_display->x11_display);
         free (egl_display->configs);
         free (egl_display);
-        display_table[ (unsigned long)dpy] = NULL;
+        PEGLGLXDISPLAY (dpy) = NULL;
     }
     eglSetError (EGL_SUCCESS);
     return EGL_TRUE;
@@ -589,20 +582,13 @@ EGLBoolean EGLAPIENTRY eglGetConfigs (EGLDisplay dpy, EGLConfig *configs,
                                       EGLint config_size, EGLint *num_config)
 {
     EGL_GLXDisplay *egl_display = NULL;
-    if ((dpy < (EGLDisplay)DEFAULT_DISPLAY) ||
-            (dpy > (EGLDisplay)DISPLAY_TABLE_SIZE)) {
-        eglSetError (EGL_BAD_DISPLAY);
-        return EGL_FALSE;
-    }
-    if (display_table[ (unsigned long)dpy] == NULL) {
-        eglSetError (EGL_NOT_INITIALIZED);
-        return EGL_FALSE;
-    }
+    CHECK_EGLDISPLAY (dpy);
+    CHECK_EGLDISPLAY_INITIALIZED (dpy);
+    egl_display = PEGLGLXDISPLAY (dpy);
     if (num_config == NULL) {
         eglSetError (EGL_BAD_PARAMETER);
         return EGL_FALSE;
     }
-    egl_display = display_table[ (unsigned long)dpy];
     if (configs == NULL) {
         *num_config = egl_display->n_configs;
         eglSetError (EGL_SUCCESS);
