@@ -336,7 +336,7 @@ static EGLBoolean fbconfig_to_eglconfig (EGL_GLXDisplay *egl_display,
     } else if (value == GLX_SLOW_CONFIG) {
         egl_config->config_caveat = EGL_SLOW_CONFIG;
     } else {
-        return EGL_FALSE;
+        egl_config->config_caveat = EGL_NON_CONFORMANT_CONFIG;
     }
     egl_config->conformant = EGL_OPENGL_BIT;
     egl_config->renderable_type = EGL_OPENGL_BIT;
@@ -494,7 +494,7 @@ static EGLBoolean visualinfo_to_eglconfig (EGL_GLXDisplay *egl_display,
             } else if (value == GLX_SLOW_VISUAL_EXT) {
                 egl_config->config_caveat = EGL_SLOW_CONFIG;
             } else {
-                return EGL_FALSE;
+                egl_config->config_caveat = EGL_NON_CONFORMANT_CONFIG;
             }
         }
     }
@@ -530,8 +530,6 @@ static EGLBoolean visualinfo_to_eglconfig (EGL_GLXDisplay *egl_display,
     egl_config->native_renderable = EGL_TRUE;
     egl_config->native_visual_id = (EGLint) info->visualid;
 
-    /* I'm not sure what is info->class :) */
-    egl_config->native_visual_type = info->class;
     if (egl_display->is_ext_visual_info) {
         if (glXGetConfig (display, info, GLX_X_VISUAL_TYPE_EXT, &value) == 0) {
             egl_config->native_visual_type = value;
