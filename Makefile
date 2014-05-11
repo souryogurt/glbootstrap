@@ -24,4 +24,4 @@ astyle:
 	astyle --options=./astylerc src/main_x11.c src/egl_glx.c
 
 cppcheck:
-	cppcheck -q --template=gcc --std=c89 --enable=all $(DEFS) -I./inc src/main_x11.c src/egl_glx.c
+	cppcheck -q --template=gcc --std=c89 --enable=all $(DEFS) -D__unix__ -I./inc src/main_x11.c src/egl_glx.c
