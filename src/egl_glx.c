@@ -22,15 +22,51 @@ typedef GLXContext ( *PFNGLXCREATECONTEXTATTRIBSARBPROC) (Display *dpy,
         const int *attrib_list);
 #endif /* GLX_ARB_create_context */
 
+typedef struct EGL_GLXConfig {
+    EGLint buffer_size;
+    EGLint red_size;
+    EGLint green_size;
+    EGLint blue_size;
+    EGLint luminance_size;
+    EGLint alpha_size;
+    EGLint alpha_mask_size;
+    EGLBoolean bind_to_texture_rgb;
+    EGLBoolean bind_to_texture_rgba;
+    EGLint color_buffer_type;
+    EGLint config_caveat;
+    EGLint config_id;
+    EGLint conformant;
+    EGLint depth_size;
+    EGLint level;
+    EGLint max_pbuffer_width;
+    EGLint max_pbuffer_height;
+    EGLint max_pbuffer_pixels;
+    EGLint max_swap_interval;
+    EGLint min_swap_interval;
+    EGLBoolean native_renderable;
+    EGLint native_visual_id;
+    EGLint native_visual_type;
+    EGLint renderable_type;
+    EGLint sample_buffers;
+    EGLint samples;
+    EGLint stencil_size;
+    EGLint surface_type;
+    EGLint transparent_type;
+    EGLint transparent_red_value;
+    EGLint transparent_green_value;
+    EGLint transparent_blue_value;
+} EGL_GLXConfig;
+
 typedef struct EGL_GLXDisplay {
     PFNGLXCREATECONTEXTATTRIBSARBPROC glXCreateContextAttribsARB;
-    Display *display; /**< Connection to X11 display */
+    Display *x11_display; /**< Connection to X11 display */
+    EGL_GLXConfig *configs;
+    EGLint n_configs;
     int screen; /**< Screen number where UGL where created */
     int glx_major; /**< Major version of glx */
     int glx_minor; /**< Minor version of glx */
     int is_modern; /**< Is we have modern GLX version (GLX > 1.2) */
     int is_arb_context_profile; /**< Is GLX_ARB_create_context_profile there*/
-    char padding[4];
 } EGL_GLXDisplay;
 
 #define DEFAULT_DISPLAY 1
@@ -148,6 +184,155 @@ static int is_extension_supported (const char *ext_string, const char *ext)
     return 0;
 }
 
+static EGLBoolean fbconfig_to_eglconfig (EGL_GLXDisplay *egl_display,
+        int config_id, EGL_GLXConfig *egl_config, GLXFBConfig glx_config)
+{
+    int value;
+    glXGetFBConfigAttrib (egl_display->x11_display, glx_config, GLX_RENDER_TYPE,
+                          &value);
+    value &= GLX_RGBA_BIT;
+    if (!value) {
+        return EGL_FALSE;
+    }
+    egl_config->color_buffer_type = EGL_RGB_BUFFER;
+
+    glXGetFBConfigAttrib (egl_display->x11_display, glx_config,
+                          GLX_CONFIG_CAVEAT, &value);
+    if (value == GLX_NONE) {
+        egl_config->config_caveat = EGL_NONE;
+    } else if (value == GLX_SLOW_CONFIG) {
+        egl_config->config_caveat = EGL_SLOW_CONFIG;
+    } else {
+        return EGL_FALSE;
+    }
+    egl_config->conformant = EGL_OPENGL_BIT;
+    egl_config->renderable_type = EGL_OPENGL_BIT;
+    glXGetFBConfigAttrib (egl_display->x11_display, glx_config, GLX_BUFFER_SIZE,
+                          (int *)&egl_config->buffer_size);
+    glXGetFBConfigAttrib (egl_display->x11_display, glx_config, GLX_RED_SIZE,
+                          (int *)&egl_config->red_size);
+    glXGetFBConfigAttrib (egl_display->x11_display, glx_config, GLX_GREEN_SIZE,
+                          (int *)&egl_config->green_size);
+    glXGetFBConfigAttrib (egl_display->x11_display, glx_config, GLX_BLUE_SIZE,
+                          (int *)&egl_config->blue_size);
+    egl_config->luminance_size = 0;
+    glXGetFBConfigAttrib (egl_display->x11_display, glx_config, GLX_ALPHA_SIZE,
+                          (int *)&egl_config->alpha_size);
+    egl_config->alpha_mask_size = 0;
+    egl_config->bind_to_texture_rgb = EGL_FALSE;
+    egl_config->bind_to_texture_rgba = EGL_FALSE;
+
+    egl_config->config_id = config_id;
+    glXGetFBConfigAttrib (egl_display->x11_display, glx_config,
+                          GLX_DEPTH_SIZE, (int *)&egl_config->depth_size);
+    glXGetFBConfigAttrib (egl_display->x11_display, glx_config, GLX_LEVEL,
+                          (int *)&egl_config->level);
+    glXGetFBConfigAttrib (egl_display->x11_display, glx_config,
+                          GLX_MAX_PBUFFER_WIDTH,
+                          (int *)&egl_config->max_pbuffer_width);
+    glXGetFBConfigAttrib (egl_display->x11_display, glx_config,
+                          GLX_MAX_PBUFFER_HEIGHT,
+                          (int *)&egl_config->max_pbuffer_height);
+    glXGetFBConfigAttrib (egl_display->x11_display, glx_config,
+                          GLX_MAX_PBUFFER_PIXELS,
+                          (int *)&egl_config->max_pbuffer_pixels);
+    /* TODO: Implement via GLX_EXT_swap_control
+     *
+     * From GLX_EXT_swap_control specification:
+     * The current swap interval and implementation-dependent max swap
+     * interval for a particular drawable can be obtained by calling
+     * glXQueryDrawable with the attributes GLX_SWAP_INTERVAL_EXT and
+     * GLX_MAX_SWAP_INTERVAL_EXT respectively. The value returned by
+     * glXQueryDrawable is undefined if the drawable is not a GLXWindow
+     * and these attributes are given.
+     */
+    egl_config->max_swap_interval = 1;
+    egl_config->min_swap_interval = 1;
+
+    glXGetFBConfigAttrib (egl_display->x11_display, glx_config,
+                          GLX_X_RENDERABLE, &value);
+    egl_config->native_renderable = (value == True) ? EGL_TRUE : EGL_FALSE;
+
+    glXGetFBConfigAttrib (egl_display->x11_display, glx_config, GLX_VISUAL_ID,
+                          (int *)&egl_config->native_visual_id);
+    glXGetFBConfigAttrib (egl_display->x11_display, glx_config,
+                          GLX_X_VISUAL_TYPE,
+                          (int *)&egl_config->native_visual_type);
+
+    /* Sample buffers are supported only in GLX 1.4 */
+    if ((egl_display->glx_minor > 1) ||
+            ((egl_display->glx_major == 1) && (egl_display->glx_minor >= 4))) {
+        glXGetFBConfigAttrib (egl_display->x11_display, glx_config,
+                              GLX_SAMPLE_BUFFERS,
+                              (int *)&egl_config->sample_buffers);
+        glXGetFBConfigAttrib (egl_display->x11_display, glx_config, GLX_SAMPLES,
+                              (int *)&egl_config->samples);
+    } else {
+        egl_config->sample_buffers = 0;
+        egl_config->samples = 0;
+    }
+
+    glXGetFBConfigAttrib (egl_display->x11_display, glx_config,
+                          GLX_STENCIL_SIZE, (int *)&egl_config->stencil_size);
+
+    glXGetFBConfigAttrib (egl_display->x11_display, glx_config,
+                          GLX_DRAWABLE_TYPE, &value);
+    egl_config->surface_type = 0;
+    egl_config->surface_type |= (value & GLX_WINDOW_BIT) ? EGL_WINDOW_BIT : 0;
+    egl_config->surface_type |= (value & GLX_PIXMAP_BIT) ? EGL_PIXMAP_BIT : 0;
+    egl_config->surface_type |= (value & GLX_PBUFFER_BIT) ? EGL_PBUFFER_BIT : 0;
+
+    glXGetFBConfigAttrib (egl_display->x11_display, glx_config,
+                          GLX_TRANSPARENT_TYPE,
+                          &value);
+    if (value == GLX_TRANSPARENT_RGB) {
+        egl_config->transparent_type = EGL_TRANSPARENT_RGB;
+        glXGetFBConfigAttrib (egl_display->x11_display, glx_config,
+                              GLX_TRANSPARENT_RED_VALUE,
+                              (int *)&egl_config->transparent_red_value);
+        glXGetFBConfigAttrib (egl_display->x11_display, glx_config,
+                              GLX_TRANSPARENT_GREEN_VALUE,
+                              (int *)&egl_config->transparent_green_value);
+        glXGetFBConfigAttrib (egl_display->x11_display, glx_config,
+                              GLX_TRANSPARENT_BLUE_VALUE,
+                              (int *)&egl_config->transparent_blue_value);
+    } else {
+        egl_config->transparent_type = EGL_NONE;
+    }
+    return EGL_TRUE;
+}
+
+static EGLBoolean allocate_configs (EGL_GLXDisplay *egl_display)
+{
+    if (egl_display->is_modern) {
+        int n_glx_configs = 0;
+        GLXFBConfig *glx_configs = glXGetFBConfigs (egl_display->x11_display,
+                                   egl_display->screen,
+                                   &n_glx_configs);
+        EGL_GLXConfig *configs = (EGL_GLXConfig *) calloc ((size_t)n_glx_configs,
+                                 sizeof (EGL_GLXConfig));
+        if (configs) {
+            int n_configs = 0;
+            while (n_glx_configs > 0) {
+                n_glx_configs--;
+                if (fbconfig_to_eglconfig (egl_display, n_configs,
+                                           &configs[n_configs],
+                                           glx_configs[n_glx_configs])) {
+                    n_configs++;
+                }
+            }
+            egl_display->configs = configs;
+            egl_display->n_configs = n_configs;
+        } else {
+            return EGL_FALSE;
+        }
+    } else {
+        /* TODO: add support for GLX 1.2 */
+        return EGL_FALSE;
+    }
+    return EGL_TRUE;
+}
+
 EGLBoolean EGLAPIENTRY eglInitialize (EGLDisplay dpy, EGLint *major,
                                       EGLint *minor)
 {
@@ -158,9 +343,9 @@ EGLBoolean EGLAPIENTRY eglInitialize (EGLDisplay dpy, EGLint *major,
     }
 
     if (display_table[ (unsigned long)dpy] == NULL) {
-        const char *extensions = NULL;
-        int major_version = 0;
-        int minor_version = 0;
+        int glx_major = 0;
+        int glx_minor = 0;
+        EGL_GLXDisplay *egl_display = NULL;
 
         Display *display = XOpenDisplay ((char *)NULL);
         if (display == NULL) {
@@ -168,26 +353,27 @@ EGLBoolean EGLAPIENTRY eglInitialize (EGLDisplay dpy, EGLint *major,
             return EGL_FALSE;
         }
         /* Check the glx version */
-        if (glXQueryVersion (display, &major_version, &minor_version) == False) {
+        if (glXQueryVersion (display, &glx_major, &glx_minor) == False) {
             XCloseDisplay (display);
             eglSetError (EGL_NOT_INITIALIZED);
             return EGL_FALSE;
         }
-        if ((major_version < 1) || ((major_version == 1) && (minor_version < 2))) {
+        if ((glx_major < 1) || ((glx_major == 1) && (glx_minor < 2))) {
             XCloseDisplay (display);
             eglSetError (EGL_NOT_INITIALIZED);
             return EGL_FALSE;
         }
-        EGL_GLXDisplay *egl_display = (EGL_GLXDisplay*)calloc (1, sizeof (EGL_GLXDisplay));
+        egl_display = (EGL_GLXDisplay *)calloc (1, sizeof (EGL_GLXDisplay));
         if (egl_display) {
-            egl_display->display = display;
+            const char *extensions = NULL;
+            egl_display->x11_display = display;
             egl_display->screen = DefaultScreen (display);
-            egl_display->glx_major = major_version;
-            egl_display->glx_minor = minor_version;
-            egl_display->is_modern = ((major_version == 1) && (minor_version > 2)) ||
-                                     (major_version > 1);
+            egl_display->glx_major = glx_major;
+            egl_display->glx_minor = glx_minor;
+            egl_display->is_modern = ((glx_major == 1) && (glx_minor > 2)) ||
+                                     (glx_major > 1);
             /* Check available GLX extensions */
-            extensions = glXQueryExtensionsString (egl_display->display,
+            extensions = glXQueryExtensionsString (egl_display->x11_display,
                                                    egl_display->screen);
 
             if (is_extension_supported (extensions, "GLX_ARB_create_context")) {
@@ -196,6 +382,12 @@ EGLBoolean EGLAPIENTRY eglInitialize (EGLDisplay dpy, EGLint *major,
                     glXGetProcAddressARB ((const GLubyte *)"glXCreateContextAttribsARB");
                 egl_display->is_arb_context_profile = is_extension_supported (extensions,
                                                       "GLX_ARB_create_context_profile");
+            }
+            if (allocate_configs (egl_display) != EGL_TRUE) {
+                XCloseDisplay (display);
+                free (egl_display);
+                eglSetError (EGL_NOT_INITIALIZED);
+                return EGL_FALSE;
             }
             display_table[ (unsigned long)dpy] = egl_display;
         } else {
@@ -264,8 +456,9 @@ EGLBoolean EGLAPIENTRY eglTerminate (EGLDisplay dpy)
     }
 
     if (display_table[ (unsigned long)dpy] != NULL) {
-        EGL_GLXDisplay *egl_display = display_table[(unsigned long)dpy];
-        XCloseDisplay(egl_display->display);
+        EGL_GLXDisplay *egl_display = display_table[ (unsigned long)dpy];
+        XCloseDisplay (egl_display->x11_display);
+        free (egl_display->configs);
         free (egl_display);
         display_table[ (unsigned long)dpy] = NULL;
     }
