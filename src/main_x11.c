@@ -8,6 +8,7 @@
 #endif
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 #include <getopt.h>
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
@@ -48,25 +49,6 @@ static struct option const long_options[] = {
     {"verbose", no_argument, NULL, 'v'},
     {NULL, 0, NULL, 0}
 };
-
-
-/** Print attribute of framebuffer configuration as unsigned int
- * @param egl_display EGL display object
- * @param config EGL framebuffer configuration
- * @param attribute framebuffer's attribute to print
- * @param attribute_name human readable name of attribute
- */
-static void print_framebuffer_attribute_int (const EGLDisplay egl_display,
-        EGLConfig config, EGLint attribute,
-        const char *attribute_name)
-{
-    EGLint value;
-    if (eglGetConfigAttrib (egl_display, config, attribute, &value) == EGL_TRUE) {
-        printf ("  %s:\t %u\n", attribute_name, (unsigned int) value);
-    } else {
-        printf ("  %s:\t Unknown\n", attribute_name);
-    }
-}
 
 /** Print usage information */
 static void print_usage (void)
@@ -190,29 +172,85 @@ static game_window_t *window_create (Display *display, const char *caption,
  * @param egl_display EGL display object
  * @param config EGL framebuffer configuration
  */
-static void print_framebuffer_configuration (const EGLDisplay egl_display,
-        EGLConfig config)
+static void print_framebuffer_configuration (const EGLDisplay d, EGLConfig c)
 {
-    EGLint value;
-    printf ("Framebuffer configuration:\n");
-    if (eglGetConfigAttrib (egl_display, config, EGL_NATIVE_VISUAL_ID,
-                            &value) == EGL_TRUE) {
-        printf ("  VisualID:\t 0x%03X\n", value);
-    } else {
-        printf ("  VisualID:\t Unknown\n");
+    EGLBoolean bind_to_texture_rgb, bind_to_texture_rgba, native_renderable;
+    EGLint buffer_size, red_size, green_size, blue_size, luminance_size,
+           alpha_size, alpha_mask_size, color_buffer_type, config_caveat,
+           config_id, conformant, depth_size, level, max_pbuffer_width,
+           max_pbuffer_height, max_pbuffer_pixels, max_swap_interval,
+           min_swap_interval, native_visual_id, native_visual_type,
+           renderable_type, sample_buffers, samples, stencil_size, surface_type,
+           transparent_type, transparent_red_value, transparent_green_value,
+           transparent_blue_value;
+    static const char *vnames[] = { "SG", "GS", "SC", "PC", "TC", "DC" };
+    char string_buffer[100] = {0};
+    eglGetConfigAttrib (d, c, EGL_BUFFER_SIZE, &buffer_size);
+    eglGetConfigAttrib (d, c, EGL_RED_SIZE, &red_size);
+    eglGetConfigAttrib (d, c, EGL_GREEN_SIZE, &green_size);
+    eglGetConfigAttrib (d, c, EGL_BLUE_SIZE, &blue_size);
+    eglGetConfigAttrib (d, c, EGL_LUMINANCE_SIZE, &luminance_size);
+    eglGetConfigAttrib (d, c, EGL_ALPHA_SIZE, &alpha_size);
+    eglGetConfigAttrib (d, c, EGL_ALPHA_MASK_SIZE, &alpha_mask_size);
+    eglGetConfigAttrib (d, c, EGL_BIND_TO_TEXTURE_RGB,
+                        (EGLint *)&bind_to_texture_rgb);
+    eglGetConfigAttrib (d, c, EGL_BIND_TO_TEXTURE_RGBA,
+                        (EGLint *)&bind_to_texture_rgba);
+    eglGetConfigAttrib (d, c, EGL_COLOR_BUFFER_TYPE, &color_buffer_type);
+    eglGetConfigAttrib (d, c, EGL_CONFIG_CAVEAT, &config_caveat);
+    eglGetConfigAttrib (d, c, EGL_CONFIG_ID, &config_id);
+    eglGetConfigAttrib (d, c, EGL_CONFORMANT, &conformant);
+    eglGetConfigAttrib (d, c, EGL_DEPTH_SIZE, &depth_size);
+    eglGetConfigAttrib (d, c, EGL_LEVEL, &level);
+    eglGetConfigAttrib (d, c, EGL_MAX_PBUFFER_WIDTH, &max_pbuffer_width);
+    eglGetConfigAttrib (d, c, EGL_MAX_PBUFFER_HEIGHT, &max_pbuffer_height);
+    eglGetConfigAttrib (d, c, EGL_MAX_PBUFFER_PIXELS, &max_pbuffer_pixels);
+    eglGetConfigAttrib (d, c, EGL_MAX_SWAP_INTERVAL, &max_swap_interval);
+    eglGetConfigAttrib (d, c, EGL_MIN_SWAP_INTERVAL, &min_swap_interval);
+    eglGetConfigAttrib (d, c, EGL_NATIVE_RENDERABLE,
+                        (EGLint *)&native_renderable);
+    eglGetConfigAttrib (d, c, EGL_NATIVE_VISUAL_ID, &native_visual_id);
+    eglGetConfigAttrib (d, c, EGL_NATIVE_VISUAL_TYPE, &native_visual_type);
+    eglGetConfigAttrib (d, c, EGL_RENDERABLE_TYPE, &renderable_type);
+    eglGetConfigAttrib (d, c, EGL_SAMPLE_BUFFERS, &sample_buffers);
+    eglGetConfigAttrib (d, c, EGL_SAMPLES, &samples);
+    eglGetConfigAttrib (d, c, EGL_STENCIL_SIZE, &stencil_size);
+    eglGetConfigAttrib (d, c, EGL_SURFACE_TYPE, &surface_type);
+    eglGetConfigAttrib (d, c, EGL_TRANSPARENT_TYPE, &transparent_type);
+    eglGetConfigAttrib (d, c, EGL_TRANSPARENT_RED_VALUE,
+                        &transparent_red_value);
+    eglGetConfigAttrib (d, c, EGL_TRANSPARENT_GREEN_VALUE,
+                        &transparent_green_value);
+    eglGetConfigAttrib (d, c, EGL_TRANSPARENT_BLUE_VALUE,
+                        &transparent_blue_value);
+
+    if (surface_type & EGL_WINDOW_BIT) {
+        strcat (string_buffer, "win,");
     }
-    print_framebuffer_attribute_int (egl_display, config, EGL_RED_SIZE,
-                                     "Red Size");
-    print_framebuffer_attribute_int (egl_display, config, EGL_GREEN_SIZE,
-                                     "Green Size");
-    print_framebuffer_attribute_int (egl_display, config, EGL_BLUE_SIZE,
-                                     "Blue Size");
-    print_framebuffer_attribute_int (egl_display, config, EGL_ALPHA_SIZE,
-                                     "Alpha Size");
-    print_framebuffer_attribute_int (egl_display, config, EGL_DEPTH_SIZE,
-                                     "Depth Size");
-    print_framebuffer_attribute_int (egl_display, config, EGL_STENCIL_SIZE,
-                                     "Stencil Size");
+    if (surface_type & EGL_PBUFFER_BIT) {
+        strcat (string_buffer, "pb,");
+    }
+    if (surface_type & EGL_PIXMAP_BIT) {
+        strcat (string_buffer, "pix,");
+    }
+    if (strlen (string_buffer) > 0) {
+        string_buffer[strlen (string_buffer) - 1] = 0;
+    }
+
+    printf ("0x%02x %3d %2d %2d %2d %2d %2d %2d %2d %2d%2d 0x%02x%s ",
+            config_id, buffer_size, level,
+            red_size, green_size, blue_size, alpha_size,
+            depth_size, stencil_size,
+            samples, sample_buffers, native_visual_id,
+            native_visual_type < 6 ? vnames[native_visual_type] : "--");
+    printf ("  %c  %c  %c  %c  %c   %c %s\n",
+            (config_caveat != EGL_NONE) ? 'y' : ' ',
+            (bind_to_texture_rgba) ? 'a' : (bind_to_texture_rgb) ? 'y' : ' ',
+            (renderable_type & EGL_OPENGL_BIT) ? 'y' : ' ',
+            (renderable_type & EGL_OPENGL_ES_BIT) ? 'y' : ' ',
+            (renderable_type & EGL_OPENGL_ES2_BIT) ? 'y' : ' ',
+            (renderable_type & EGL_OPENVG_BIT) ? 'y' : ' ',
+            string_buffer);
 }
 
 /** Print full list of available configurations
@@ -228,7 +266,10 @@ static void print_available_configurations (const EGLDisplay egl_display)
     configs = (EGLConfig *)calloc ((size_t)n_configs, sizeof (EGLConfig));
     if (configs) {
         eglGetConfigs (egl_display, configs, n_configs, &n_configs);
-        printf ("Available configurations:\n");
+        printf ("Configurations:\n");
+        printf ("     bf  lv colorbuffer dp st  ms    vis   cav bi  renderable  supported\n");
+        printf ("  id sz   l  r  g  b  a th cl ns b    id   eat nd gl es es2 vg surfaces \n");
+        printf ("------------------------------------------------------------------------\n");
         while (n_configs > 0) {
             n_configs--;
             print_framebuffer_configuration (egl_display, configs[n_configs]);
@@ -322,6 +363,7 @@ int main (int argc, char *const *argv)
     }
 
     if (verbose) {
+        printf ("Selected configuration:\n");
         print_framebuffer_configuration (egl_display, config);
     }
 
