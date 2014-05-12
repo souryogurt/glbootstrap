@@ -572,6 +572,7 @@ static EGLBoolean visualinfo_to_eglconfig (EGL_GLXDisplay *egl_display,
 static EGLBoolean allocate_configs (EGL_GLXDisplay *egl_display)
 {
     EGL_GLXConfig *configs = NULL;
+    int n_configs = 0;
     if (egl_display->is_modern) {
         int n_glx_configs = 0;
         GLXFBConfig *glx_configs = glXGetFBConfigs (egl_display->x11_display,
@@ -580,10 +581,9 @@ static EGLBoolean allocate_configs (EGL_GLXDisplay *egl_display)
         configs = (EGL_GLXConfig *) calloc ((size_t)n_glx_configs,
                                             sizeof (EGL_GLXConfig));
         if (configs) {
-            int n_configs = 0;
             while (n_glx_configs > 0) {
                 n_glx_configs--;
-                if (fbconfig_to_eglconfig (egl_display, n_configs,
+                if (fbconfig_to_eglconfig (egl_display, n_configs + 1,
                                            &configs[n_configs],
                                            glx_configs[n_glx_configs])) {
                     n_configs++;
@@ -604,10 +604,9 @@ static EGLBoolean allocate_configs (EGL_GLXDisplay *egl_display)
         configs = (EGL_GLXConfig *) calloc ((size_t)n_visualinfo,
                                             sizeof (EGL_GLXConfig));
         if (configs) {
-            int n_configs = 0;
             while (n_visualinfo > 0) {
                 n_visualinfo--;
-                if (visualinfo_to_eglconfig (egl_display, n_configs,
+                if (visualinfo_to_eglconfig (egl_display, n_configs + 1,
                                              &configs[n_configs],
                                              &info[n_visualinfo])) {
                     n_configs++;
