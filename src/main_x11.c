@@ -348,7 +348,7 @@ int main (int argc, char *const *argv)
     }
 
     err = eglChooseConfig (egl_display, egl_attributes, &config, 1, &n_configs);
-    if (err != EGL_TRUE) {
+    if ((err != EGL_TRUE) || (n_configs == 0)) {
         fprintf (stderr, "%s: can't retrieve a framebuffer config\n",
                  program_name);
         eglTerminate (egl_display);
