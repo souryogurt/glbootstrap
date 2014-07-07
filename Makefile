@@ -1,20 +1,21 @@
 CC?=gcc
 CFLAGS?=-O0 -g --std=c89 -funsafe-loop-optimizations $(C_NINJA)
-CPPFLAGS=-DHAVE_CONFIG_H -I./inc
+CPPFLAGS=-DHAVE_CONFIG_H -I./inc -I/usr/local/include
 LDFLAGS=-L/usr/local/lib
 LDLIBS=-lX11 -lGL
+RM?=rm -f
 
 SOURCES = src/main_x11.c src/egl_glx.c
 OBJECTS = $(SOURCES:.c=.o)
 
 glbootstrap: $(OBJECTS)
-	$(LINK.o) $(LDLIBS) $(OBJECTS) -o $@
+	$(CC) $(LDFLAGS) $(OBJECTS) $(LDLIBS) -o $@
 
 $(OBJECTS): inc/config.h inc/EGL/egl.h inc/EGL/eglext.h inc/EGL/eglplatform.h \
 	inc/KHR/khrplatform.h
 
 .c.o:
-	$(COMPILE.c) -I/usr/local/include $(OUTPUT_OPTION) $<
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c $< -o $@
 
 .PHONY : clean oclint tags astyle cppcheck
 clean:	
