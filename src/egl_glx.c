@@ -1413,9 +1413,9 @@ EGLBoolean EGLAPIENTRY eglMakeCurrent (EGLDisplay dpy, EGLSurface draw,
     EGL_GLXSurface *egl_draw = (EGL_GLXSurface *) draw;
     EGL_GLXSurface *egl_read = (EGL_GLXSurface *) read;
     EGL_GLXContext *egl_context = (EGL_GLXContext *) ctx;
-    GLXDrawable x11_draw = NULL;
-    GLXDrawable x11_read = NULL;
-    GLXContext x11_context = NULL;
+    GLXDrawable x11_draw = (GLXDrawable)NULL;
+    GLXDrawable x11_read = (GLXDrawable)NULL;
+    GLXContext x11_context = (GLXContext)NULL;
     CHECK_EGLDISPLAY (dpy);
     egl_display = PEGLGLXDISPLAY (dpy);
     if (ctx != EGL_NO_CONTEXT || draw != EGL_NO_SURFACE || read != EGL_NO_SURFACE) {
