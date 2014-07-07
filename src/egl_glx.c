@@ -155,6 +155,8 @@ typedef struct EGL_GLXDisplay {
 #define DISPLAY_TABLE_SIZE 1
 static EGL_GLXDisplay *display_table[DISPLAY_TABLE_SIZE] = { NULL };
 
+static EGLenum CurrentAPI = EGL_NONE; /*TODO: Should be in TLS */
+
 #define CHECK_EGLDISPLAY(dpy) { \
 if (((EGL_GLXDisplay **)dpy < display_table) \
       || ((EGL_GLXDisplay **)dpy >= &display_table[DISPLAY_TABLE_SIZE])) { \
@@ -189,8 +191,13 @@ static void eglSetError (EGLint error)
 
 EGLBoolean EGLAPIENTRY eglBindAPI (EGLenum api)
 {
-    UNUSED (api);
-    /*TODO: Set last EGL error for this thread */
+    if (api == EGL_OPENGL_API) {
+        /* TODO: set API for current THREAD */
+        CurrentAPI = api;
+        eglSetError (EGL_SUCCESS);
+        return EGL_TRUE;
+    }
+    eglSetError (EGL_BAD_PARAMETER);
     return EGL_FALSE;
 }
 
