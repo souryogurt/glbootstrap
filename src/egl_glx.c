@@ -456,15 +456,15 @@ static EGLint select_config (EGL_GLXDisplay *egl_display,
 
 static int  fill_query (ConfigQuery *query, const EGLint *attrib_list)
 {
-    size_t index = 0;
+    size_t i = 0;
     EGLint value = 0;
     if (attrib_list == NULL) {
         return 1;
     }
 
-    for (index = 0; attrib_list[index] != EGL_NONE; index += 2) {
-        value = attrib_list[index + 1];
-        switch (attrib_list[index]) {
+    for (i = 0; attrib_list[i] != EGL_NONE; i += 2) {
+        value = attrib_list[i + 1];
+        switch (attrib_list[i]) {
             case EGL_BUFFER_SIZE:
                 query->buffer_size = value;
                 break;
