@@ -314,7 +314,6 @@ int main (int argc, char *const *argv)
         EGL_DEPTH_SIZE, 16,
         EGL_STENCIL_SIZE, 8,
         EGL_CONFORMANT, EGL_OPENGL_BIT,
-        EGL_NATIVE_RENDERABLE, EGL_TRUE,
         EGL_RENDERABLE_TYPE, EGL_OPENGL_BIT,
         EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
         EGL_NONE
