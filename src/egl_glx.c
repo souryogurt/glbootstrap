@@ -100,7 +100,7 @@ typedef struct ConfigQuery {
     EGLint max_pbuffer_pixels;
 } ConfigQuery;
 
-static ConfigQuery default_query = {
+static const ConfigQuery default_query = {
     0, /* EGL_BUFFER_SIZE */
     0, /* EGL_RED_SIZE */
     0, /* EGL_GREEN_SIZE */
@@ -273,15 +273,13 @@ static EGLint select_config (EGL_GLXDisplay *egl_display,
     for (i = 0; (i < egl_display->n_configs); i++) {
         EGL_GLXConfig *cfg = &egl_display->configs[i];
         selected[n_selected].n_colorbits = 0;
-        if (query->config_id != EGL_DONT_CARE) {
-            if (cfg->config_id != query->config_id) {
-                continue;
-            }
+        if ((query->config_id != EGL_DONT_CARE)
+                && (cfg->config_id != query->config_id)) {
+            continue;
         }
-        if (query->buffer_size != EGL_DONT_CARE) {
-            if (cfg->buffer_size < query->buffer_size) {
-                continue;
-            }
+        if ((query->buffer_size != EGL_DONT_CARE)
+                && (cfg->buffer_size < query->buffer_size)) {
+            continue;
         }
         if (query->red_size != EGL_DONT_CARE) {
             if (cfg->red_size < query->red_size) {
@@ -301,10 +299,9 @@ static EGLint select_config (EGL_GLXDisplay *egl_display,
             }
             selected[n_selected].n_colorbits += cfg->blue_size;
         }
-        if (query->luminance_size != EGL_DONT_CARE) {
-            if (cfg->luminance_size < query->luminance_size) {
-                continue;
-            }
+        if ((query->luminance_size != EGL_DONT_CARE)
+                && (cfg->luminance_size < query->luminance_size)) {
+            continue;
         }
         if (query->alpha_size != EGL_DONT_CARE) {
             if (cfg->alpha_size < query->alpha_size) {
@@ -312,42 +309,36 @@ static EGLint select_config (EGL_GLXDisplay *egl_display,
             }
             selected[n_selected].n_colorbits += cfg->alpha_size;
         }
-        if (query->alpha_mask_size != EGL_DONT_CARE) {
-            if (cfg->alpha_mask_size < query->alpha_mask_size) {
-                continue;
-            }
+        if ((query->alpha_mask_size != EGL_DONT_CARE)
+                && (cfg->alpha_mask_size < query->alpha_mask_size)) {
+            continue;
+
         }
-        if (query->bind_to_texture_rgb != EGL_DONT_CARE) {
-            if (cfg->bind_to_texture_rgb != (EGLBoolean)
-                    query->bind_to_texture_rgb) {
-                continue;
-            }
+        if ((query->bind_to_texture_rgb != EGL_DONT_CARE)
+                && (cfg->bind_to_texture_rgb != (EGLBoolean)
+                    query->bind_to_texture_rgb)) {
+            continue;
         }
-        if (query->bind_to_texture_rgba != EGL_DONT_CARE) {
-            if (cfg->bind_to_texture_rgba != (EGLBoolean)
-                    query->bind_to_texture_rgba) {
-                continue;
-            }
+        if ((query->bind_to_texture_rgba != EGL_DONT_CARE)
+                && (cfg->bind_to_texture_rgba != (EGLBoolean)
+                    query->bind_to_texture_rgba)) {
+            continue;
         }
-        if (query->color_buffer_type != EGL_DONT_CARE) {
-            if (cfg->color_buffer_type != query->color_buffer_type) {
-                continue;
-            }
+        if ((query->color_buffer_type != EGL_DONT_CARE)
+                && (cfg->color_buffer_type != query->color_buffer_type)) {
+            continue;
         }
-        if (query->config_caveat != EGL_DONT_CARE) {
-            if (cfg->config_caveat != query->config_caveat) {
-                continue;
-            }
+        if ((query->config_caveat != EGL_DONT_CARE)
+                && (cfg->config_caveat != query->config_caveat)) {
+            continue;
         }
-        if (query->conformant != EGL_DONT_CARE) {
-            if ((cfg->conformant & query->conformant) != query->conformant) {
-                continue;
-            }
+        if ((query->conformant != EGL_DONT_CARE)
+                && ((cfg->conformant & query->conformant) != query->conformant)) {
+            continue;
         }
-        if (query->depth_size != EGL_DONT_CARE) {
-            if (cfg->depth_size < query->depth_size) {
-                continue;
-            }
+        if ((query->depth_size != EGL_DONT_CARE)
+                && (cfg->depth_size < query->depth_size)) {
+            continue;
         }
         if (cfg->level != query->level) {
             continue;
@@ -356,76 +347,63 @@ static EGLint select_config (EGL_GLXDisplay *egl_display,
         /* TODO: EGL_MATCH_NATIVE_PIXMAP is ignored */
 
 
-        if (query->max_swap_interval != EGL_DONT_CARE) {
-            if (cfg->max_swap_interval != query->max_swap_interval) {
-                continue;
-            }
+        if ((query->max_swap_interval != EGL_DONT_CARE)
+                && (cfg->max_swap_interval != query->max_swap_interval)) {
+            continue;
         }
-        if (query->min_swap_interval != EGL_DONT_CARE) {
-            if (cfg->min_swap_interval != query->min_swap_interval) {
-                continue;
-            }
+        if ((query->min_swap_interval != EGL_DONT_CARE)
+                && (cfg->min_swap_interval != query->min_swap_interval)) {
+            continue;
         }
-        if (query->native_renderable != EGL_DONT_CARE) {
-            if (cfg->native_renderable != (EGLBoolean)query->native_renderable) {
-                continue;
-            }
+        if ((query->native_renderable != EGL_DONT_CARE)
+                && (cfg->native_renderable != (EGLBoolean)query->native_renderable)) {
+            continue;
         }
-        if (query->renderable_type != EGL_DONT_CARE) {
-            if ((cfg->renderable_type & query->renderable_type) !=
-                    query->renderable_type) {
-                continue;
-            }
+        if ((query->renderable_type != EGL_DONT_CARE)
+                && ((cfg->renderable_type & query->renderable_type) !=
+                    query->renderable_type)) {
+            continue;
         }
-        if (query->sample_buffers != EGL_DONT_CARE) {
-            if (cfg->sample_buffers < query->sample_buffers) {
-                continue;
-            }
+        if ((query->sample_buffers != EGL_DONT_CARE)
+                && (cfg->sample_buffers < query->sample_buffers)) {
+            continue;
         }
-        if (query->samples != EGL_DONT_CARE) {
-            if (cfg->samples < query->samples) {
-                continue;
-            }
+        if ((query->samples != EGL_DONT_CARE)
+                && (cfg->samples < query->samples)) {
+            continue;
         }
-        if (query->stencil_size != EGL_DONT_CARE) {
-            if (cfg->stencil_size < query->stencil_size) {
-                continue;
-            }
+        if ((query->stencil_size != EGL_DONT_CARE)
+                && (cfg->stencil_size < query->stencil_size)) {
+            continue;
         }
-        if (query->surface_type != EGL_DONT_CARE) {
-            if ((cfg->surface_type & query->surface_type) !=
-                    query->surface_type) {
-                continue;
-            }
+        if ((query->surface_type != EGL_DONT_CARE)
+                && ((cfg->surface_type & query->surface_type) !=
+                    query->surface_type)) {
+            continue;
         }
-        if ((query->surface_type & EGL_WINDOW_BIT) &&
-                query->native_visual_type != EGL_DONT_CARE) {
-            if (cfg->native_visual_type != query->native_visual_type) {
-                continue;
-            }
+        if ((query->surface_type & EGL_WINDOW_BIT)
+                && (query->native_visual_type != EGL_DONT_CARE)
+                && (cfg->native_visual_type != query->native_visual_type)) {
+            continue;
         }
-        if (query->transparent_type != EGL_DONT_CARE) {
-            if (cfg->transparent_type != query->transparent_type) {
-                continue;
-            }
+        if ((query->transparent_type != EGL_DONT_CARE)
+                && (cfg->transparent_type != query->transparent_type)) {
+            continue;
         }
-        if (query->transparent_red_value != EGL_DONT_CARE &&
-                cfg->transparent_type != EGL_NONE) {
-            if (cfg->transparent_red_value != query->transparent_red_value) {
-                continue;
-            }
+        if ((query->transparent_red_value != EGL_DONT_CARE)
+                && (cfg->transparent_type != EGL_NONE)
+                && (cfg->transparent_red_value != query->transparent_red_value)) {
+            continue;
         }
-        if (query->transparent_green_value != EGL_DONT_CARE &&
-                cfg->transparent_type != EGL_NONE) {
-            if (cfg->transparent_green_value != query->transparent_green_value) {
-                continue;
-            }
+        if ((query->transparent_green_value != EGL_DONT_CARE)
+                && (cfg->transparent_type != EGL_NONE)
+                && (cfg->transparent_green_value != query->transparent_green_value)) {
+            continue;
         }
-        if (query->transparent_blue_value != EGL_DONT_CARE &&
-                cfg->transparent_type != EGL_NONE) {
-            if (cfg->transparent_blue_value != query->transparent_blue_value) {
-                continue;
-            }
+        if ((query->transparent_blue_value != EGL_DONT_CARE)
+                && (cfg->transparent_type != EGL_NONE)
+                && (cfg->transparent_blue_value != query->transparent_blue_value)) {
+            continue;
         }
         switch (cfg->config_caveat) {
             case EGL_NONE:
@@ -981,15 +959,14 @@ static EGLBoolean visualinfo_to_eglconfig (EGL_GLXDisplay *egl_display,
     }
     egl_config->color_buffer_type = EGL_RGB_BUFFER;
     egl_config->config_caveat = EGL_NONE;
-    if (egl_display->is_ext_visual_rating) {
-        if (glXGetConfig (display, info, GLX_VISUAL_CAVEAT_EXT, &value) == 0) {
-            if (value == GLX_NONE_EXT) {
-                egl_config->config_caveat = EGL_NONE;
-            } else if (value == GLX_SLOW_VISUAL_EXT) {
-                egl_config->config_caveat = EGL_SLOW_CONFIG;
-            } else {
-                egl_config->config_caveat = EGL_NON_CONFORMANT_CONFIG;
-            }
+    if ((egl_display->is_ext_visual_rating)
+            && (glXGetConfig (display, info, GLX_VISUAL_CAVEAT_EXT, &value) == 0)) {
+        if (value == GLX_NONE_EXT) {
+            egl_config->config_caveat = EGL_NONE;
+        } else if (value == GLX_SLOW_VISUAL_EXT) {
+            egl_config->config_caveat = EGL_SLOW_CONFIG;
+        } else {
+            egl_config->config_caveat = EGL_NON_CONFORMANT_CONFIG;
         }
     }
     egl_config->config_id = config_id;
@@ -1024,10 +1001,9 @@ static EGLBoolean visualinfo_to_eglconfig (EGL_GLXDisplay *egl_display,
     egl_config->native_renderable = EGL_TRUE;
     egl_config->native_visual_id = (EGLint) info->visualid;
 
-    if (egl_display->is_ext_visual_info) {
-        if (glXGetConfig (display, info, GLX_X_VISUAL_TYPE_EXT, &value) == 0) {
-            egl_config->native_visual_type = value;
-        }
+    if ((egl_display->is_ext_visual_info)
+            && (glXGetConfig (display, info, GLX_X_VISUAL_TYPE_EXT, &value) == 0)) {
+        egl_config->native_visual_type = value;
     }
 
     if (egl_display->is_arb_multisample) {
@@ -1044,17 +1020,16 @@ static EGLBoolean visualinfo_to_eglconfig (EGL_GLXDisplay *egl_display,
     egl_config->surface_type = EGL_WINDOW_BIT | EGL_PIXMAP_BIT;
 
     egl_config->transparent_type = EGL_NONE;
-    if (egl_display->is_ext_visual_info) {
-        if (glXGetConfig (display, info, GLX_TRANSPARENT_TYPE_EXT, &value) == 0) {
-            if (value == GLX_TRANSPARENT_RGB_EXT) {
-                egl_config->transparent_type = EGL_TRANSPARENT_RGB;
-                glXGetConfig (display, info, GLX_TRANSPARENT_RED_VALUE_EXT,
-                              (int *)&egl_config->transparent_red_value);
-                glXGetConfig (display, info, GLX_TRANSPARENT_GREEN_VALUE_EXT,
-                              (int *)&egl_config->transparent_green_value);
-                glXGetConfig (display, info, GLX_TRANSPARENT_BLUE_VALUE_EXT,
-                              (int *)&egl_config->transparent_blue_value);
-            }
+    if ((egl_display->is_ext_visual_info)
+            && (glXGetConfig (display, info, GLX_TRANSPARENT_TYPE_EXT, &value) == 0)) {
+        if (value == GLX_TRANSPARENT_RGB_EXT) {
+            egl_config->transparent_type = EGL_TRANSPARENT_RGB;
+            glXGetConfig (display, info, GLX_TRANSPARENT_RED_VALUE_EXT,
+                          (int *)&egl_config->transparent_red_value);
+            glXGetConfig (display, info, GLX_TRANSPARENT_GREEN_VALUE_EXT,
+                          (int *)&egl_config->transparent_green_value);
+            glXGetConfig (display, info, GLX_TRANSPARENT_BLUE_VALUE_EXT,
+                          (int *)&egl_config->transparent_blue_value);
         }
     }
     if (err != 0 ) {
