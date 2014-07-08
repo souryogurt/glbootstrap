@@ -58,10 +58,10 @@ typedef struct EGL_GLXConfig {
 } EGL_GLXConfig;
 
 typedef struct EGL_GLXConfigEntry {
+    EGL_GLXConfig *config;
     EGLint caveat;
     EGLint buffer_type;
     EGLint n_colorbits;
-    EGL_GLXConfig *config;
 } EGL_GLXConfigEntry;
 
 typedef struct ConfigQuery {
