@@ -1,27 +1,33 @@
 CC?=gcc
-DEFS?=-DHAVE_CONFIG_H
-CFLAGS?=--std=c89 -O0 -g -funsafe-loop-optimizations $(C_NINJA)
+CFLAGS?=-O0 -g --std=c89 -funsafe-loop-optimizations $(C_NINJA)
+CPPFLAGS=-DHAVE_CONFIG_H -I./inc
+LDFLAGS=-L/usr/local/lib
+LDLIBS=-lX11 -lGL
 
-glbootstrap:	main_x11.o  egl_glx.o
-	$(CC) $(CFLAGS) -L/usr/local/lib -o glbootstrap main_x11.o egl_glx.o -lX11 -lGL
+SOURCES = src/main_x11.c src/egl_glx.c
+OBJECTS = $(SOURCES:.c=.o)
 
-main_x11.o:	src/main_x11.c
-	$(CC) $(DEFS) $(CFLAGS) -c -I/usr/local/include -I./inc src/main_x11.c
+glbootstrap: $(OBJECTS)
+	$(LINK.o) $(LDLIBS) $(OBJECTS) -o $@
 
-egl_glx.o:	src/egl_glx.c
-	$(CC) $(DEFS) $(CFLAGS) -c -I/usr/local/include -I./inc src/egl_glx.c
+$(OBJECTS): inc/config.h inc/EGL/egl.h inc/EGL/eglext.h inc/EGL/eglplatform.h \
+	inc/KHR/khrplatform.h
 
+.c.o:
+	$(COMPILE.c) -I/usr/local/include $(OUTPUT_OPTION) $<
+
+.PHONY : clean oclint tags astyle cppcheck
 clean:	
-	rm ./glbootstrap ./main_x11.o ./egl_glx.o
+	$(RM) ./glbootstrap $(OBJECTS)
 
-oclint:		src/main_x11.c src/egl_glx.c
-	oclint --enable-global-analysis src/main_x11.c src/egl_glx.c -- -c $(DEFS) -I./inc
+oclint:
+	oclint --enable-global-analysis $(SOURCES) -- -c $(CPPFLAGS)
 
 tags:
 	ctags -R
 
 astyle:
-	astyle --options=./astylerc src/main_x11.c src/egl_glx.c
+	astyle --options=./astylerc $(SOURCES)
 
 cppcheck:
-	cppcheck -q --template=gcc --std=c89 --enable=all $(DEFS) -D__unix__ -I./inc src/main_x11.c src/egl_glx.c
+	cppcheck -q --template=gcc --std=c89 --enable=all $(CPPFLAGS) -D__unix__ -I/usr/include $(SOURCES)
