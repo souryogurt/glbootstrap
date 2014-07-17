@@ -603,11 +603,43 @@ EGLContext EGLAPIENTRY eglCreateContext (EGLDisplay dpy, EGLConfig config,
         EGLContext share_context,
         const EGLint *attrib_list)
 {
-    UNUSED (dpy);
+    EGL_GLXDisplay *egl_display = NULL;
     UNUSED (config);
     UNUSED (share_context);
     UNUSED (attrib_list);
-    /*TODO: Set last EGL error for this thread */
+    CHECK_EGLDISPLAY (dpy);
+    CHECK_EGLDISPLAY_INITIALIZED (dpy);
+    CHECK_EGLCONFIG (dpy, config);
+    egl_display = PEGLGLXDISPLAY (dpy);
+    if (CurrentAPI == EGL_NONE) {
+        eglSetError (EGL_BAD_MATCH);
+        return EGL_NO_CONTEXT;
+    }
+    if (share_context == EGL_NO_CONTEXT) {
+        eglSetError (EGL_BAD_CONTEXT);
+        return EGL_NO_CONTEXT;
+    } else {
+        /* TODO: make all shareable data, as defined by client API, to be
+         * shared by share_context, all other contexts share_context already
+         * shares with, and the newly created context */
+        eglSetError (EGL_BAD_ALLOC);
+        return EGL_NO_CONTEXT;
+    }
+    /* TODO: generate EGL_BAD_MATCH error  if config does not support the
+     * requested client API. This includes requesting creation of
+     * an OpenGL ES 1.x, 2.0, or 3.0 context when the EGL_RENDERABLE_TYPE
+     * attribute of config does not contain EGL_OPENGL_ES_BIT ,
+     * EGL_OPENGL_ES2_BIT , or EGL_- OPENGL_ES3_BIT respectively. */
+    /* TODO: generate EGL_BAD_CONTEXT if share_context not a of the same client
+     * API type as the newly created context */
+    /* TODO: parse attributes. If some attributes are not present, then use
+     * default values for this attributes */
+    /* TODO: generate EGL_BAD_ATTRIBUTE error if an attribte is specified is
+     * not supported for the client API type determined by the current
+     * rendering API */
+    /* TODO: generate EGL_BAD_ATTRIBUTE error if and attribute name or
+     * attribute value in attrib_list is not recognized */
+    eglSetError (EGL_BAD_ALLOC);
     return EGL_NO_CONTEXT;
 }
 
