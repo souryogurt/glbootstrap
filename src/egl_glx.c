@@ -136,6 +136,25 @@ static const ConfigQuery default_query = {
     EGL_DONT_CARE /* EGL_MAX_PBUFFER_PIXELS */
 };
 
+typedef struct ContextAttributes {
+    EGLint major_version;
+    EGLint minor_version;
+    EGLint profile_mask;
+    EGLint debug;
+    EGLint forward;
+    EGLint robust_access;
+    EGLint reset_strategy;
+} ContextAttributes;
+
+static const ContextAttributes default_context_attributes = {
+    1, /* EGL_CONTEXT_MAJOR_VERSION */
+    0, /* EGL_CONTEXT_MINOR_VERSION */
+    EGL_CONTEXT_OPENGL_CORE_PROFILE_BIT, /* EGL_CONTEXT_OPENGL_PROFILE_MASK */
+    EGL_FALSE, /* EGL_CONTEXT_OPENGL_DEBUG */
+    EGL_FALSE, /* EGL_CONTEXT_FORWARD_COMPATIBLE */
+    EGL_FALSE, /* EGL_CONTEXT_OPENGL_ROBUST_ACCESS */
+    EGL_NO_RESET_NOTIFICATION /* EGL_CONTEXT_OPENGL_RESET_NOTIFICATION_STRATEGY */
+};
 
 typedef struct EGL_GLXDisplay {
     PFNGLXCREATECONTEXTATTRIBSARBPROC glXCreateContextAttribsARB;
@@ -599,11 +618,57 @@ EGLBoolean EGLAPIENTRY eglChooseConfig (EGLDisplay dpy,
     return EGL_TRUE;
 }
 
+static int parse_context_attributes (ContextAttributes *attributes,
+                                     const EGLint *attrib_list)
+{
+    size_t i = 0;
+    if (attrib_list == NULL) {
+        return 1;
+    }
+    for (i = 0; attrib_list[i] != EGL_NONE; i += 2) {
+        EGLint value = attrib_list[i + 1];
+        switch (attrib_list[i]) {
+            case EGL_CONTEXT_MAJOR_VERSION:
+                attributes->major_version = value;
+                break;
+            case EGL_CONTEXT_MINOR_VERSION:
+                attributes->minor_version = value;
+                break;
+            case EGL_CONTEXT_OPENGL_PROFILE_MASK:
+                if (value & ~ (EGL_CONTEXT_OPENGL_CORE_PROFILE_BIT |
+                               EGL_CONTEXT_OPENGL_COMPATIBILITY_PROFILE_BIT)) {
+                    return 0;
+                }
+                attributes->profile_mask = value;
+                break;
+            case EGL_CONTEXT_OPENGL_DEBUG:
+                attributes->debug = value;
+                break;
+            case EGL_CONTEXT_OPENGL_FORWARD_COMPATIBLE:
+                attributes->forward = value;
+                break;
+            case EGL_CONTEXT_OPENGL_ROBUST_ACCESS:
+                attributes->robust_access = value;
+                break;
+            case EGL_CONTEXT_OPENGL_RESET_NOTIFICATION_STRATEGY:
+                attributes->reset_strategy = value;
+                break;
+            default:
+                return 0;
+        }
+    }
+    /* TODO: check that version is defined:
+     * 1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 2.0, 2.1, 3.0, 3.1, 3.2, 4.0, 4.1,
+     * 4.2, 4.3, 4.4, and any later versions of OpenGL released by Khronos */
+    return 1;
+}
+
 EGLContext EGLAPIENTRY eglCreateContext (EGLDisplay dpy, EGLConfig config,
         EGLContext share_context,
         const EGLint *attrib_list)
 {
     EGL_GLXDisplay *egl_display = NULL;
+    ContextAttributes attributes = default_context_attributes;
     UNUSED (config);
     UNUSED (share_context);
     UNUSED (attrib_list);
@@ -615,14 +680,11 @@ EGLContext EGLAPIENTRY eglCreateContext (EGLDisplay dpy, EGLConfig config,
         eglSetError (EGL_BAD_MATCH);
         return EGL_NO_CONTEXT;
     }
-    if (share_context == EGL_NO_CONTEXT) {
-        eglSetError (EGL_BAD_CONTEXT);
-        return EGL_NO_CONTEXT;
-    } else {
+    if (share_context != EGL_NO_CONTEXT) {
         /* TODO: make all shareable data, as defined by client API, to be
          * shared by share_context, all other contexts share_context already
          * shares with, and the newly created context */
-        eglSetError (EGL_BAD_ALLOC);
+        eglSetError (EGL_BAD_CONTEXT);
         return EGL_NO_CONTEXT;
     }
     /* TODO: generate EGL_BAD_MATCH error  if config does not support the
@@ -632,13 +694,10 @@ EGLContext EGLAPIENTRY eglCreateContext (EGLDisplay dpy, EGLConfig config,
      * EGL_OPENGL_ES2_BIT , or EGL_- OPENGL_ES3_BIT respectively. */
     /* TODO: generate EGL_BAD_CONTEXT if share_context not a of the same client
      * API type as the newly created context */
-    /* TODO: parse attributes. If some attributes are not present, then use
-     * default values for this attributes */
-    /* TODO: generate EGL_BAD_ATTRIBUTE error if an attribte is specified is
-     * not supported for the client API type determined by the current
-     * rendering API */
-    /* TODO: generate EGL_BAD_ATTRIBUTE error if and attribute name or
-     * attribute value in attrib_list is not recognized */
+    if (parse_context_attributes (&attributes, attrib_list) == 0) {
+        eglSetError (EGL_BAD_ATTRIBUTE);
+        return EGL_NO_CONTEXT;
+    }
     eglSetError (EGL_BAD_ALLOC);
     return EGL_NO_CONTEXT;
 }
