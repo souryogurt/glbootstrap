@@ -23,6 +23,7 @@ typedef GLXContext ( *PFNGLXCREATECONTEXTATTRIBSARBPROC) (Display *dpy,
 #endif /* GLX_ARB_create_context */
 
 typedef struct EGL_GLXConfig {
+    GLXFBConfig fb_config;
     EGLint buffer_size;
     EGLint red_size;
     EGLint green_size;
@@ -668,6 +669,8 @@ EGLContext EGLAPIENTRY eglCreateContext (EGLDisplay dpy, EGLConfig config,
         const EGLint *attrib_list)
 {
     EGL_GLXDisplay *egl_display = NULL;
+    EGL_GLXConfig *egl_config = NULL;
+    GLXContext context = NULL;
     ContextAttributes attributes = default_context_attributes;
     UNUSED (config);
     UNUSED (share_context);
@@ -676,11 +679,14 @@ EGLContext EGLAPIENTRY eglCreateContext (EGLDisplay dpy, EGLConfig config,
     CHECK_EGLDISPLAY_INITIALIZED (dpy);
     CHECK_EGLCONFIG (dpy, config);
     egl_display = PEGLGLXDISPLAY (dpy);
+    egl_config = (EGL_GLXConfig *)config;
     if (CurrentAPI == EGL_NONE) {
         eglSetError (EGL_BAD_MATCH);
         return EGL_NO_CONTEXT;
     }
     if (share_context != EGL_NO_CONTEXT) {
+        /* TODO: generate EGL_BAD_CONTEXT if share_context not a of the same client
+         * API type as the newly created context */
         /* TODO: make all shareable data, as defined by client API, to be
          * shared by share_context, all other contexts share_context already
          * shares with, and the newly created context */
@@ -692,14 +698,53 @@ EGLContext EGLAPIENTRY eglCreateContext (EGLDisplay dpy, EGLConfig config,
      * an OpenGL ES 1.x, 2.0, or 3.0 context when the EGL_RENDERABLE_TYPE
      * attribute of config does not contain EGL_OPENGL_ES_BIT ,
      * EGL_OPENGL_ES2_BIT , or EGL_- OPENGL_ES3_BIT respectively. */
-    /* TODO: generate EGL_BAD_CONTEXT if share_context not a of the same client
-     * API type as the newly created context */
     if (parse_context_attributes (&attributes, attrib_list) == 0) {
         eglSetError (EGL_BAD_ATTRIBUTE);
         return EGL_NO_CONTEXT;
     }
-    eglSetError (EGL_BAD_ALLOC);
-    return EGL_NO_CONTEXT;
+
+    if (egl_display->is_modern) {
+        GLXFBConfig glx_config = egl_config->fb_config;
+        if (egl_display->glXCreateContextAttribsARB) {
+            int context_attribs[] = {
+                GLX_CONTEXT_MAJOR_VERSION_ARB, 1,
+                GLX_CONTEXT_MINOR_VERSION_ARB, 0,
+                None
+            };
+            context_attribs[1] = attributes.major_version;
+            context_attribs[3] = attributes.major_version;
+            /* TODO: other attributes */
+            context = egl_display->glXCreateContextAttribsARB (
+                          egl_display->x11_display,
+                          glx_config,
+                          /* TODO: share_context */ NULL,
+                          True, context_attribs);
+        } else {
+            /* If theare no GLX_ARB_create_context extension, then fall back to
+             * standard GLX1.3 way */
+            context = glXCreateNewContext (egl_display->x11_display, glx_config,
+                                           GLX_RGBA_TYPE, NULL, True);
+        }
+    } else {
+        int n_visuals;
+        XVisualInfo *visual_info = NULL;
+        XVisualInfo info_template;
+        info_template.visualid = (VisualID) egl_config->native_visual_id;
+        visual_info = XGetVisualInfo (egl_display->x11_display, VisualIDMask,
+                                      &info_template, &n_visuals);
+        if (visual_info == NULL) {
+            eglSetError (EGL_BAD_CONFIG);
+            return EGL_NO_CONTEXT;
+        }
+        context = glXCreateContext (egl_display->x11_display, visual_info,
+                                    NULL, True);
+        XFree (visual_info);
+    }
+    if (context == NULL) {
+        eglSetError (EGL_BAD_ALLOC);
+        return EGL_NO_CONTEXT;
+    }
+    return (EGLContext) context;
 }
 
 EGLSurface EGLAPIENTRY eglCreateWindowSurface (EGLDisplay dpy, EGLConfig config,
@@ -883,6 +928,7 @@ static EGLBoolean fbconfig_to_eglconfig (EGL_GLXDisplay *egl_display,
         int config_id, EGL_GLXConfig *egl_config, GLXFBConfig glx_config)
 {
     int value;
+    egl_config->fb_config = glx_config;
     glXGetFBConfigAttrib (egl_display->x11_display, glx_config, GLX_RENDER_TYPE,
                           &value);
     value &= GLX_RGBA_BIT;
