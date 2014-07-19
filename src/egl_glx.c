@@ -672,9 +672,6 @@ EGLContext EGLAPIENTRY eglCreateContext (EGLDisplay dpy, EGLConfig config,
     EGL_GLXConfig *egl_config = NULL;
     GLXContext context = NULL;
     ContextAttributes attributes = default_context_attributes;
-    UNUSED (config);
-    UNUSED (share_context);
-    UNUSED (attrib_list);
     CHECK_EGLDISPLAY (dpy);
     CHECK_EGLDISPLAY_INITIALIZED (dpy);
     CHECK_EGLCONFIG (dpy, config);
@@ -744,6 +741,7 @@ EGLContext EGLAPIENTRY eglCreateContext (EGLDisplay dpy, EGLConfig config,
         eglSetError (EGL_BAD_ALLOC);
         return EGL_NO_CONTEXT;
     }
+    eglSetError (EGL_SUCCESS);
     return (EGLContext) context;
 }
 
@@ -751,12 +749,37 @@ EGLSurface EGLAPIENTRY eglCreateWindowSurface (EGLDisplay dpy, EGLConfig config,
         EGLNativeWindowType win,
         const EGLint *attrib_list)
 {
-    UNUSED (dpy);
-    UNUSED (config);
-    UNUSED (win);
+    GLXDrawable drawable = (GLXDrawable)NULL;
+    EGL_GLXDisplay *egl_display = NULL;
+    EGL_GLXConfig *egl_config = NULL;
+    CHECK_EGLDISPLAY (dpy);
+    CHECK_EGLDISPLAY_INITIALIZED (dpy);
+    CHECK_EGLCONFIG (dpy, config);
+    egl_display = PEGLGLXDISPLAY (dpy);
+    egl_config = (EGL_GLXConfig *)config;
+    if ((egl_config->surface_type & EGL_WINDOW_BIT) == 0) {
+        eglSetError (EGL_BAD_MATCH);
+        return EGL_NO_SURFACE;
+    }
     UNUSED (attrib_list);
-    /*TODO: Set last EGL error for this thread */
-    return EGL_NO_SURFACE;
+    /* TODO: parse attribute list */
+    /* TODO: If the pixel format of native native window does not correspond to
+     * the format, type, and size of the color buffers required by config, then
+     * EGL_BAD_MATCH error is generated */
+    /* TODO: if native_window is not a valid native window handle, then an
+     * EGL_BAD_NATIVE_WINDOW error should be generated. */
+    /* TODO: If there is already an EGLSurface associated with native_window
+     * (as a result of previous eglCreateWindowSurface call), then an
+     * EGL_BAD_ALLOC error is generated. */
+    if (egl_display->is_modern) {
+        GLXFBConfig glx_config = egl_config->fb_config;
+        drawable = glXCreateWindow (egl_display->x11_display, glx_config, win,
+                                    NULL);
+    } else {
+        drawable = (GLXDrawable) win;
+    }
+    eglSetError (EGL_SUCCESS);
+    return (EGLSurface)drawable;
 }
 
 EGLBoolean EGLAPIENTRY eglDestroyContext (EGLDisplay dpy, EGLContext ctx)
