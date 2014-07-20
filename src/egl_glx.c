@@ -157,10 +157,16 @@ static const ContextAttributes default_context_attributes = {
     EGL_NO_RESET_NOTIFICATION /* EGL_CONTEXT_OPENGL_RESET_NOTIFICATION_STRATEGY */
 };
 
+typedef struct EGL_GLXContext {
+    GLXContext ctx;
+    struct EGL_GLXContext *next;
+} EGL_GLXContext;
+
 typedef struct EGL_GLXDisplay {
     PFNGLXCREATECONTEXTATTRIBSARBPROC glXCreateContextAttribsARB;
     Display *x11_display; /**< Connection to X11 display */
     EGL_GLXConfig *configs;
+    EGL_GLXContext *contexts;
     EGLint n_configs;
     int screen; /**< Screen number where UGL where created */
     int glx_major; /**< Major version of glx */
@@ -737,12 +743,20 @@ EGLContext EGLAPIENTRY eglCreateContext (EGLDisplay dpy, EGLConfig config,
                                     NULL, True);
         XFree (visual_info);
     }
-    if (context == NULL) {
-        eglSetError (EGL_BAD_ALLOC);
-        return EGL_NO_CONTEXT;
+    if (context != NULL) {
+        EGL_GLXContext *egl_context = (EGL_GLXContext *)
+                                      malloc (sizeof (EGL_GLXContext));
+        if (egl_context != NULL) {
+            egl_context->ctx = context;
+            egl_context->next = egl_display->contexts;
+            egl_display->contexts = egl_context;
+            eglSetError (EGL_SUCCESS);
+            return (EGLContext) egl_context;
+        }
+        glXDestroyContext (egl_display->x11_display, context);
     }
-    eglSetError (EGL_SUCCESS);
-    return (EGLContext) context;
+    eglSetError (EGL_BAD_ALLOC);
+    return EGL_NO_CONTEXT;
 }
 
 EGLSurface EGLAPIENTRY eglCreateWindowSurface (EGLDisplay dpy, EGLConfig config,
@@ -784,9 +798,29 @@ EGLSurface EGLAPIENTRY eglCreateWindowSurface (EGLDisplay dpy, EGLConfig config,
 
 EGLBoolean EGLAPIENTRY eglDestroyContext (EGLDisplay dpy, EGLContext ctx)
 {
-    UNUSED (dpy);
-    UNUSED (ctx);
-    /*TODO: Set last EGL error for this thread */
+    EGL_GLXDisplay *egl_display = NULL;
+    EGL_GLXContext *item = NULL;
+    EGL_GLXContext *prev_item = NULL;
+    EGL_GLXContext *egl_context = NULL;
+    CHECK_EGLDISPLAY (dpy);
+    CHECK_EGLDISPLAY_INITIALIZED (dpy);
+    egl_context = (EGL_GLXContext *) ctx;
+    egl_display = PEGLGLXDISPLAY (dpy);
+    for (item = egl_display->contexts; item != NULL;
+            prev_item = item, item = item->next) {
+        if (item == egl_context) {
+            if (prev_item == NULL) {
+                egl_display->contexts = item->next;
+            } else {
+                prev_item->next = item->next;
+            }
+            glXDestroyContext (egl_display->x11_display, item->ctx);
+            free (item);
+            eglSetError (EGL_SUCCESS);
+            return EGL_TRUE;
+        }
+    }
+    eglSetError (EGL_BAD_CONTEXT);
     return EGL_FALSE;
 }
 
@@ -1368,6 +1402,12 @@ EGLBoolean EGLAPIENTRY eglTerminate (EGLDisplay dpy)
     CHECK_EGLDISPLAY (dpy);
     egl_display = PEGLGLXDISPLAY (dpy);
     if (egl_display != NULL) {
+        while (egl_display->contexts != NULL) {
+            EGL_GLXContext *context = egl_display->contexts;
+            egl_display->contexts = egl_display->contexts->next;
+            glXDestroyContext (egl_display->x11_display, context->ctx);
+            free (context);
+        }
         XCloseDisplay (egl_display->x11_display);
         free (egl_display->configs);
         free (egl_display);
