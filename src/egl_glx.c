@@ -162,11 +162,18 @@ typedef struct EGL_GLXContext {
     struct EGL_GLXContext *next;
 } EGL_GLXContext;
 
+typedef struct EGL_GLXSurface {
+    GLXDrawable drawable;
+    Window window;
+    struct EGL_GLXSurface *next;
+} EGL_GLXSurface;
+
 typedef struct EGL_GLXDisplay {
     PFNGLXCREATECONTEXTATTRIBSARBPROC glXCreateContextAttribsARB;
     Display *x11_display; /**< Connection to X11 display */
     EGL_GLXConfig *configs;
     EGL_GLXContext *contexts;
+    EGL_GLXSurface *surfaces;
     EGLint n_configs;
     int screen; /**< Screen number where UGL where created */
     int glx_major; /**< Major version of glx */
@@ -764,6 +771,7 @@ EGLSurface EGLAPIENTRY eglCreateWindowSurface (EGLDisplay dpy, EGLConfig config,
         const EGLint *attrib_list)
 {
     GLXDrawable drawable = (GLXDrawable)NULL;
+    EGL_GLXSurface *egl_surface = NULL;
     EGL_GLXDisplay *egl_display = NULL;
     EGL_GLXConfig *egl_config = NULL;
     CHECK_EGLDISPLAY (dpy);
@@ -782,9 +790,14 @@ EGLSurface EGLAPIENTRY eglCreateWindowSurface (EGLDisplay dpy, EGLConfig config,
      * EGL_BAD_MATCH error is generated */
     /* TODO: if native_window is not a valid native window handle, then an
      * EGL_BAD_NATIVE_WINDOW error should be generated. */
-    /* TODO: If there is already an EGLSurface associated with native_window
-     * (as a result of previous eglCreateWindowSurface call), then an
-     * EGL_BAD_ALLOC error is generated. */
+    for (egl_surface = egl_display->surfaces; egl_surface != NULL;
+            egl_surface = egl_surface->next) {
+        if (egl_surface->window == (Window)win) {
+            eglSetError (EGL_BAD_ALLOC);
+            return EGL_NO_SURFACE;
+        }
+    }
+
     if (egl_display->is_modern) {
         GLXFBConfig glx_config = egl_config->fb_config;
         drawable = glXCreateWindow (egl_display->x11_display, glx_config, win,
@@ -792,8 +805,17 @@ EGLSurface EGLAPIENTRY eglCreateWindowSurface (EGLDisplay dpy, EGLConfig config,
     } else {
         drawable = (GLXDrawable) win;
     }
-    eglSetError (EGL_SUCCESS);
-    return (EGLSurface)drawable;
+    egl_surface = (EGL_GLXSurface *) malloc (sizeof (EGL_GLXSurface));
+    if (egl_surface != NULL) {
+        egl_surface->next = egl_display->surfaces;
+        egl_display->surfaces = egl_surface;
+        egl_surface->drawable = drawable;
+        egl_surface->window = (Window) win;
+        eglSetError (EGL_SUCCESS);
+        return (EGLSurface)egl_surface;
+    }
+    eglSetError (EGL_BAD_ALLOC);
+    return EGL_NO_SURFACE;
 }
 
 EGLBoolean EGLAPIENTRY eglDestroyContext (EGLDisplay dpy, EGLContext ctx)
@@ -826,6 +848,32 @@ EGLBoolean EGLAPIENTRY eglDestroyContext (EGLDisplay dpy, EGLContext ctx)
 
 EGLBoolean EGLAPIENTRY eglDestroySurface (EGLDisplay dpy, EGLSurface surface)
 {
+    EGL_GLXDisplay *egl_display = NULL;
+    EGL_GLXSurface *item = NULL;
+    EGL_GLXSurface *prev_item = NULL;
+    EGL_GLXSurface *egl_surface = NULL;
+    CHECK_EGLDISPLAY (dpy);
+    CHECK_EGLDISPLAY_INITIALIZED (dpy);
+    egl_surface = (EGL_GLXSurface *) surface;
+    egl_display = PEGLGLXDISPLAY (dpy);
+    for (item = egl_display->surfaces; item != NULL;
+            prev_item = item, item = item->next) {
+        if (item == egl_surface) {
+            if (prev_item == NULL) {
+                egl_display->surfaces = item->next;
+            } else {
+                prev_item->next = item->next;
+            }
+            if (egl_display->is_modern) {
+                glXDestroyWindow (egl_display->x11_display, item->drawable);
+            }
+            free (item);
+            eglSetError (EGL_SUCCESS);
+            return EGL_TRUE;
+        }
+    }
+    eglSetError (EGL_BAD_CONTEXT);
+    return EGL_FALSE;
     UNUSED (dpy);
     UNUSED (surface);
     /*TODO: Set last EGL error for this thread */
@@ -1407,6 +1455,14 @@ EGLBoolean EGLAPIENTRY eglTerminate (EGLDisplay dpy)
             egl_display->contexts = egl_display->contexts->next;
             glXDestroyContext (egl_display->x11_display, context->ctx);
             free (context);
+        }
+        while (egl_display->surfaces != NULL) {
+            EGL_GLXSurface *surface = egl_display->surfaces;
+            egl_display->surfaces = egl_display->surfaces->next;
+            if (egl_display->is_modern) {
+                glXDestroyWindow (egl_display->x11_display, surface->drawable);
+            }
+            free (surface);
         }
         XCloseDisplay (egl_display->x11_display);
         free (egl_display->configs);
