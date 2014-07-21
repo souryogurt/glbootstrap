@@ -409,6 +409,7 @@ int main (int argc, char *const *argv)
         fprintf (stderr, "%s: can't make OpenGL context be current\n",
                  program_name);
         eglDestroyContext (egl_display, context);
+        eglDestroySurface (egl_display, window_surface);
         window_destroy (main_window);
         eglTerminate (egl_display);
         return EXIT_FAILURE;
