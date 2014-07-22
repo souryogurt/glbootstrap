@@ -1469,10 +1469,13 @@ const char *EGLAPIENTRY eglQueryString (EGLDisplay dpy, EGLint name)
 
 EGLBoolean EGLAPIENTRY eglSwapBuffers (EGLDisplay dpy, EGLSurface surface)
 {
-    UNUSED (dpy);
-    UNUSED (surface);
-    /*TODO: Set last EGL error for this thread */
-    return EGL_FALSE;
+    EGL_GLXSurface *egl_surface = (EGL_GLXSurface *) surface;
+    EGL_GLXDisplay *egl_display = NULL;
+    CHECK_EGLDISPLAY (dpy);
+    CHECK_EGLDISPLAY_INITIALIZED (dpy);
+    egl_display = PEGLGLXDISPLAY (dpy);
+    glXSwapBuffers (egl_display->x11_display, egl_surface->drawable);
+    return EGL_TRUE;
 }
 
 EGLBoolean EGLAPIENTRY eglTerminate (EGLDisplay dpy)
