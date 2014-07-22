@@ -874,10 +874,6 @@ EGLBoolean EGLAPIENTRY eglDestroySurface (EGLDisplay dpy, EGLSurface surface)
     }
     eglSetError (EGL_BAD_CONTEXT);
     return EGL_FALSE;
-    UNUSED (dpy);
-    UNUSED (surface);
-    /*TODO: Set last EGL error for this thread */
-    return EGL_FALSE;
 }
 
 EGLBoolean EGLAPIENTRY eglGetConfigAttrib (EGLDisplay dpy, EGLConfig config,
