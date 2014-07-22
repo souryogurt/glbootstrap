@@ -283,9 +283,9 @@ static int config_comparator (const void *lvalue, const void *rvalue)
     } else if (lcfg->config->alpha_mask_size < rcfg->config->alpha_mask_size) {
         return -1;
     }
-    if (lcfg->config->native_visual_type < rcfg->config->native_visual_type) {
+    if (lcfg->config->native_visual_type > rcfg->config->native_visual_type) {
         return +1;
-    } else if (lcfg->config->native_visual_type >
+    } else if (lcfg->config->native_visual_type <
                rcfg->config->native_visual_type) {
         return -1;
     }
