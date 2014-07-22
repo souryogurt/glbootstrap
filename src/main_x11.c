@@ -238,7 +238,7 @@ static void print_framebuffer_configuration (const EGLDisplay d, EGLConfig c)
         string_buffer[strlen (string_buffer) - 1] = 0;
     }
 
-    printf ("0x%02x %3d %2d %2d %2d %2d %2d %2d %2d %2d%2d 0x%02x%s ",
+    printf ("0x%03x %3d %2d %2d %2d %2d %2d %2d %2d %2d%2d 0x%02x%s ",
             config_id, buffer_size, level,
             red_size, green_size, blue_size, alpha_size,
             depth_size, stencil_size,
@@ -261,16 +261,20 @@ static void print_available_configurations (const EGLDisplay egl_display)
 {
     EGLint n_configs = 0;
     EGLConfig *configs = NULL;
+    static const EGLint egl_attributes[] = {
+        EGL_RENDERABLE_TYPE, EGL_OPENGL_BIT,
+        EGL_NONE
+    };
     if (eglGetConfigs (egl_display, NULL, 0, &n_configs) == EGL_FALSE) {
         return;
     }
     configs = (EGLConfig *)calloc ((size_t)n_configs, sizeof (EGLConfig));
     if (configs) {
-        eglGetConfigs (egl_display, configs, n_configs, &n_configs);
+        eglChooseConfig (egl_display, egl_attributes, configs, n_configs, &n_configs);
         printf ("Configurations:\n");
-        printf ("     bf  lv colorbuffer dp st  ms    vis   cav bi  renderable  supported\n");
-        printf ("  id sz   l  r  g  b  a th cl ns b    id   eat nd gl es es2 vg surfaces \n");
-        printf ("------------------------------------------------------------------------\n");
+        printf ("      bf  lv colorbuffer dp st  ms    vis   cav bi  renderable  supported\n");
+        printf ("  id  sz   l  r  g  b  a th cl ns b    id   eat nd gl es es2 vg surfaces \n");
+        printf ("-------------------------------------------------------------------------\n");
         while (n_configs > 0) {
             n_configs--;
             print_framebuffer_configuration (egl_display, configs[n_configs]);
