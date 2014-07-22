@@ -1409,12 +1409,43 @@ EGLBoolean EGLAPIENTRY eglInitialize (EGLDisplay dpy, EGLint *major,
 EGLBoolean EGLAPIENTRY eglMakeCurrent (EGLDisplay dpy, EGLSurface draw,
                                        EGLSurface read, EGLContext ctx)
 {
-    UNUSED (dpy);
-    UNUSED (draw);
-    UNUSED (read);
-    UNUSED (ctx);
-    /*TODO: Set last EGL error for this thread */
-    return EGL_FALSE;
+    EGL_GLXDisplay *egl_display = NULL;
+    EGL_GLXSurface *egl_draw = (EGL_GLXSurface *) draw;
+    EGL_GLXSurface *egl_read = (EGL_GLXSurface *) read;
+    EGL_GLXContext *egl_context = (EGL_GLXContext *) ctx;
+    GLXDrawable x11_draw = NULL;
+    GLXDrawable x11_read = NULL;
+    GLXContext x11_context = NULL;
+    CHECK_EGLDISPLAY (dpy);
+    egl_display = PEGLGLXDISPLAY (dpy);
+    if (ctx != EGL_NO_CONTEXT || draw != EGL_NO_SURFACE || read != EGL_NO_SURFACE) {
+        CHECK_EGLDISPLAY_INITIALIZED (dpy);
+    }
+    if (ctx == EGL_NO_CONTEXT) {
+        if (draw != EGL_NO_SURFACE || read != EGL_NO_SURFACE) {
+            eglSetError (EGL_BAD_MATCH);
+            return EGL_FALSE;
+        }
+    } else if (ctx != EGL_NO_CONTEXT) {
+        if (draw != EGL_NO_SURFACE && read != EGL_NO_SURFACE) {
+            /* TODO: Check context and surfaces */
+            x11_draw = egl_draw->drawable;
+            x11_read = egl_read->drawable;
+            x11_context = egl_context->ctx;
+        } else {
+            eglSetError (EGL_BAD_MATCH);
+            return EGL_FALSE;
+        }
+    }
+
+    if (egl_display->is_modern) {
+        return glXMakeContextCurrent (egl_display->x11_display,
+                                      x11_draw, x11_read,
+                                      x11_context) == True ? EGL_TRUE : EGL_FALSE;
+    }
+    return glXMakeCurrent (egl_display->x11_display,
+                           x11_draw,
+                           x11_context) == True ? EGL_TRUE : EGL_FALSE;
 }
 
 const char *EGLAPIENTRY eglQueryString (EGLDisplay dpy, EGLint name)

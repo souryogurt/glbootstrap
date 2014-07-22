@@ -13,6 +13,7 @@
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #include <EGL/egl.h>
+#include <GL/gl.h>
 
 /** Window type */
 typedef struct game_window_t {
@@ -414,7 +415,7 @@ int main (int argc, char *const *argv)
         eglTerminate (egl_display);
         return EXIT_FAILURE;
     }
-
+    printf ("OpenGL %s\n", glGetString (GL_VERSION));
     while (window_is_exists (main_window)) {
         window_process_events (main_window);
         /*game_tick();*/
