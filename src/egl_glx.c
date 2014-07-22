@@ -33,6 +33,7 @@ typedef struct EGL_GLXConfig {
     EGLint alpha_mask_size;
     EGLBoolean bind_to_texture_rgb;
     EGLBoolean bind_to_texture_rgba;
+    EGLBoolean double_buffer;
     EGLint color_buffer_type;
     EGLint config_caveat;
     EGLint config_id;
@@ -258,6 +259,20 @@ static int config_comparator (const void *lvalue, const void *rvalue)
     } else if (lcfg->config->buffer_size < rcfg->config->buffer_size) {
         return -1;
     }
+
+    /* WARN: This rule is not present in EGL specification and added here
+     * because we can't specify single/double buffered surface in
+     * eglCreateWindowSurface call as requrired by specification. So
+     * implementation will just prefere doublebuffered configs like GLX do for
+     * window configs */
+    if ((lcfg->config->double_buffer == EGL_TRUE)
+            && (rcfg->config->double_buffer == EGL_FALSE)) {
+        return -1;
+    } else if ((lcfg->config->double_buffer == EGL_FALSE)
+               && (rcfg->config->double_buffer == EGL_TRUE)) {
+        return +1;
+    }
+
     if (lcfg->config->sample_buffers > rcfg->config->sample_buffers) {
         return +1;
     } else if (lcfg->config->sample_buffers < rcfg->config->sample_buffers) {
@@ -1064,6 +1079,9 @@ static EGLBoolean fbconfig_to_eglconfig (EGL_GLXDisplay *egl_display,
     egl_config->bind_to_texture_rgb = EGL_FALSE;
     egl_config->bind_to_texture_rgba = EGL_FALSE;
 
+    glXGetFBConfigAttrib (egl_display->x11_display, glx_config,
+                          GLX_DOUBLEBUFFER, &value);
+    egl_config->double_buffer = (value == True) ? EGL_TRUE : EGL_FALSE;
     egl_config->config_id = config_id;
     glXGetFBConfigAttrib (egl_display->x11_display, glx_config,
                           GLX_DEPTH_SIZE, (int *)&egl_config->depth_size);
@@ -1188,6 +1206,10 @@ static EGLBoolean visualinfo_to_eglconfig (EGL_GLXDisplay *egl_display,
     egl_config->alpha_mask_size = 0;
     egl_config->bind_to_texture_rgb = 0;
     egl_config->bind_to_texture_rgba = 0;
+    if (err == 0) {
+        err = glXGetConfig (display, info, GLX_DOUBLEBUFFER, &value);
+    }
+    egl_config->double_buffer = (value == True) ? EGL_TRUE : EGL_FALSE;
     if (err == 0) {
         err = glXGetConfig (display, info, GLX_RGBA, &value);
     }
