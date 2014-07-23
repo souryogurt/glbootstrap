@@ -1,0 +1,3 @@
+[submodule "eglproxy"]
+	path = eglproxy
+	url = git@bitbucket.org:souryogurt/eglproxy.git
