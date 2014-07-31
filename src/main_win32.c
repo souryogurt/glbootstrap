@@ -1,3 +1,8 @@
+/**
+ * @file main_win32.c
+ * This module contains entry point and initialization for win32 variant
+ * of application.
+ */
 #pragma warning( push )
 #pragma warning( disable: 4668 )
 #pragma warning( disable: 4820 )
