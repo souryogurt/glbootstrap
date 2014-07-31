@@ -354,22 +354,39 @@ int main (int argc, char *const *argv)
         eglTerminate (egl_display);
         return EXIT_FAILURE;
     }
-    err = eglGetConfigAttrib (egl_display, config, EGL_NATIVE_VISUAL_ID,
-                              (EGLint *)&visual_id);
-    if (err == EGL_FALSE) {
-        fprintf (stderr, "%s: can't retrieve a visual\n", program_name);
-        eglTerminate (egl_display);
-        return EXIT_FAILURE;
-    }
 
     if (verbose) {
         printf ("Selected configuration:\n");
         print_framebuffer_configuration (egl_display, config);
     }
 
+    err = eglBindAPI (EGL_OPENGL_API);
+    if (err != EGL_TRUE) {
+        fprintf (stderr, "%s: can't bind OpenGL API\n", program_name);
+        eglTerminate (egl_display);
+        return EXIT_FAILURE;
+    }
+
+    context = eglCreateContext (egl_display, config, EGL_NO_CONTEXT, NULL);
+    if (context == EGL_NO_CONTEXT) {
+        fprintf (stderr, "%s: can't create OpenGL context\n", program_name);
+        eglTerminate (egl_display);
+        return EXIT_FAILURE;
+    }
+
+    err = eglGetConfigAttrib (egl_display, config, EGL_NATIVE_VISUAL_ID,
+                              (EGLint *)&visual_id);
+    if (err == EGL_FALSE) {
+        fprintf (stderr, "%s: can't retrieve a visual\n", program_name);
+        eglDestroyContext (egl_display, context);
+        eglTerminate (egl_display);
+        return EXIT_FAILURE;
+    }
+
     display = XOpenDisplay (NULL);
     if (display == NULL) {
         fprintf (stderr, "%s: can't connect to X server\n", program_name);
+        eglDestroyContext (egl_display, context);
         eglTerminate (egl_display);
         return EXIT_FAILURE;
     }
@@ -378,21 +395,7 @@ int main (int argc, char *const *argv)
     if (main_window == NULL) {
         fprintf (stderr, "%s: can't create game window\n", program_name);
         XCloseDisplay (display);
-        eglTerminate (egl_display);
-        return EXIT_FAILURE;
-    }
-
-    err = eglBindAPI (EGL_OPENGL_API);
-    if (err != EGL_TRUE) {
-        fprintf (stderr, "%s: can't bind OpenGL API\n", program_name);
-        window_destroy (main_window);
-        eglTerminate (egl_display);
-        return EXIT_FAILURE;
-    }
-    context = eglCreateContext (egl_display, config, EGL_NO_CONTEXT, NULL);
-    if (context == EGL_NO_CONTEXT) {
-        fprintf (stderr, "%s: can't create OpenGL context\n", program_name);
-        window_destroy (main_window);
+        eglDestroyContext (egl_display, context);
         eglTerminate (egl_display);
         return EXIT_FAILURE;
     }
@@ -400,8 +403,9 @@ int main (int argc, char *const *argv)
                      (NativeWindowType) window_get_native (main_window), NULL);
     if (window_surface == EGL_NO_SURFACE) {
         fprintf (stderr, "%s: can't create rendering surface\n", program_name);
-        eglDestroyContext (egl_display, context);
         window_destroy (main_window);
+        XCloseDisplay (display);
+        eglDestroyContext (egl_display, context);
         eglTerminate (egl_display);
         return EXIT_FAILURE;
     }
@@ -409,10 +413,12 @@ int main (int argc, char *const *argv)
     if (err == EGL_FALSE) {
         fprintf (stderr, "%s: can't make OpenGL context be current\n",
                  program_name);
-        eglDestroyContext (egl_display, context);
         eglDestroySurface (egl_display, window_surface);
         window_destroy (main_window);
+        XCloseDisplay (display);
+        eglDestroyContext (egl_display, context);
         eglTerminate (egl_display);
+        window_destroy (main_window);
         return EXIT_FAILURE;
     }
     printf ("OpenGL %s\n", glGetString (GL_VERSION));
@@ -423,9 +429,9 @@ int main (int argc, char *const *argv)
     }
     eglMakeCurrent (egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
     eglDestroySurface (egl_display, window_surface);
-    eglDestroyContext (egl_display, context);
     window_destroy (main_window);
     XCloseDisplay (display);
+    eglDestroyContext (egl_display, context);
     eglTerminate (egl_display);
     return EXIT_SUCCESS;
 }
