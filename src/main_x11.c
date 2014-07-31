@@ -418,7 +418,6 @@ int main (int argc, char *const *argv)
         XCloseDisplay (display);
         eglDestroyContext (egl_display, context);
         eglTerminate (egl_display);
-        window_destroy (main_window);
         return EXIT_FAILURE;
     }
     printf ("OpenGL %s\n", glGetString (GL_VERSION));
