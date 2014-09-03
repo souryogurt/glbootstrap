@@ -18,6 +18,9 @@
     <ClCompile Include="src\main_win32.c">
       <Filter>Файлы исходного кода</Filter>
     </ClCompile>
+    <ClCompile Include="eglproxy\src\eglproxy.c">
+      <Filter>Файлы исходного кода</Filter>
+    </ClCompile>
     <ClCompile Include="eglproxy\src\egl_wgl.c">
       <Filter>Файлы исходного кода</Filter>
     </ClCompile>
