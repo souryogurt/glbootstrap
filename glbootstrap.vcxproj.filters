@@ -25,4 +25,9 @@
       <Filter>Файлы исходного кода</Filter>
     </ClCompile>
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="eglproxy\inc\eglproxy.h">
+      <Filter>Заголовочные файлы</Filter>
+    </ClInclude>
+  </ItemGroup>
 </Project>
