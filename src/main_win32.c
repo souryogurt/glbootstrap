@@ -7,14 +7,14 @@
 #pragma warning( disable: 4668 )
 #pragma warning( disable: 4820 )
 #include <tchar.h>
-#include <Windows.h>
+#include <windows.h>
 #include <strsafe.h>
 #pragma warning( pop )
 
 #pragma warning( disable: 4710 )
 #define EGLAPI
 #include <EGL/egl.h>
-#include <GL/GL.h>
+#include <GL/gl.h>
 
 static const TCHAR *MainWindowClassName = _T ("BOOTSTRAP Window Class");
 
@@ -106,7 +106,7 @@ int CALLBACK WinMain (HINSTANCE hInstance, HINSTANCE hPrevInstance,
     wc.lpszClassName = MainWindowClassName;
     wc.style = CS_OWNDC;
 
-    if ( RegisterClassEx (&wc) == (ATOM)NULL ) {
+    if ( RegisterClassEx (&wc) == 0 ) {
         MessageBox (NULL, _T ("Can't register a window class"), 0,
                     MB_OK + MB_ICONINFORMATION);
         eglDestroyContext (egl_display, context);
