@@ -31,7 +31,7 @@ tags:
 	ctags -R
 
 astyle:
-	astyle --options=./astylerc $(SOURCES)
+	astyle --options=./astylerc $(SOURCES) src/main_win32.c
 
 cppcheck:
 	cppcheck -q --template=gcc --std=c89 --enable=all $(CPPFLAGS) -D__unix__ -I/usr/include $(SOURCES)
