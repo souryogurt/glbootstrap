@@ -3,16 +3,20 @@
  * This module contains entry point and initialization for win32 variant
  * of application.
  */
+#ifdef _MSC_VER
 #pragma warning( push )
 #pragma warning( disable: 4668 )
 #pragma warning( disable: 4820 )
 #pragma warning( disable: 4255 )
+#endif //_MSC_VER
 #include <tchar.h>
 #include <windows.h>
 #include <strsafe.h>
+#ifdef _MSC_VER
 #pragma warning( pop )
 
 #pragma warning( disable: 4710 )
+#endif //_MSC_VER
 #define EGLAPI
 #include <EGL/egl.h>
 #include <GL/gl.h>
