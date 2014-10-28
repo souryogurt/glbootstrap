@@ -66,6 +66,9 @@ int CALLBACK WinMain (HINSTANCE hInstance, HINSTANCE hPrevInstance,
     MSG msg;
     RECT window_size = {0, 0, 640, 480};
     BOOL window_closed = FALSE;
+    int pixel_format = 0;
+    HDC hDC = NULL;
+    PIXELFORMATDESCRIPTOR pfd = {0};
 
     egl_display = eglGetDisplay (EGL_DEFAULT_DISPLAY);
     if (egl_display == EGL_NO_DISPLAY) {
@@ -127,12 +130,37 @@ int CALLBACK WinMain (HINSTANCE hInstance, HINSTANCE hPrevInstance,
                                   0, 0, hInstance, 0);
     ShowWindow (main_window, nCmdShow);
 
-
+    err = eglGetConfigAttrib (egl_display, config, EGL_NATIVE_VISUAL_ID,
+                              (EGLint *)&pixel_format);
+    if (err == EGL_FALSE) {
+        MessageBox (NULL, _T ("Can't retrieve a pixel format"), 0,
+                    MB_OK + MB_ICONINFORMATION);
+        eglDestroyContext (egl_display, context);
+        DestroyWindow (main_window);
+        UnregisterClass (MainWindowClassName, hInstance);
+        eglTerminate (egl_display);
+        return 1;
+    }
+    hDC = GetDC (main_window);
+    DescribePixelFormat (hDC, pixel_format, sizeof (PIXELFORMATDESCRIPTOR),
+                         &pfd);
+    if (!SetPixelFormat (hDC, pixel_format, &pfd)) {
+        MessageBox (NULL, _T ("Can't set pixel format"), 0,
+                    MB_OK + MB_ICONINFORMATION);
+        ReleaseDC (main_window, hDC);
+        eglDestroyContext (egl_display, context);
+        DestroyWindow (main_window);
+        UnregisterClass (MainWindowClassName, hInstance);
+        eglTerminate (egl_display);
+        return 1;
+    }
+    ReleaseDC (main_window, hDC);
     window_surface = eglCreateWindowSurface (egl_display, config,
                      (NativeWindowType) main_window, NULL);
     if (window_surface == EGL_NO_SURFACE) {
         MessageBox (NULL, _T ("Can't create window OpenGL surface"), 0,
                     MB_OK + MB_ICONINFORMATION);
+
         DestroyWindow (main_window);
         UnregisterClass (MainWindowClassName, hInstance);
         eglDestroyContext (egl_display, context);
