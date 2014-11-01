@@ -331,15 +331,23 @@ int main (int argc, char *const *argv)
 
     parse_args (argc, argv);
 
-    egl_display = eglGetDisplay (EGL_DEFAULT_DISPLAY);
+    display = XOpenDisplay (NULL);
+    if (display == NULL) {
+        fprintf (stderr, "%s: can't connect to X server\n", program_name);
+        return EXIT_FAILURE;
+    }
+
+    egl_display = eglGetDisplay (display);
     if (egl_display == EGL_NO_DISPLAY) {
         fprintf (stderr, "%s: no matching EGL_DEFAULT_DISPLAY is available\n",
                  program_name);
+        XCloseDisplay (display);
         return EXIT_FAILURE;
     }
     if (eglInitialize (egl_display, &egl_major, &egl_minor) != EGL_TRUE) {
         fprintf (stderr, "%s: can't initialize EGL on a display\n",
                  program_name);
+        XCloseDisplay (display);
         return EXIT_FAILURE;
     }
 
@@ -352,6 +360,7 @@ int main (int argc, char *const *argv)
         fprintf (stderr, "%s: can't retrieve a framebuffer config\n",
                  program_name);
         eglTerminate (egl_display);
+        XCloseDisplay (display);
         return EXIT_FAILURE;
     }
 
@@ -364,6 +373,7 @@ int main (int argc, char *const *argv)
     if (err != EGL_TRUE) {
         fprintf (stderr, "%s: can't bind OpenGL API\n", program_name);
         eglTerminate (egl_display);
+        XCloseDisplay (display);
         return EXIT_FAILURE;
     }
 
@@ -371,6 +381,7 @@ int main (int argc, char *const *argv)
     if (context == EGL_NO_CONTEXT) {
         fprintf (stderr, "%s: can't create OpenGL context\n", program_name);
         eglTerminate (egl_display);
+        XCloseDisplay (display);
         return EXIT_FAILURE;
     }
 
@@ -380,23 +391,16 @@ int main (int argc, char *const *argv)
         fprintf (stderr, "%s: can't retrieve a visual\n", program_name);
         eglDestroyContext (egl_display, context);
         eglTerminate (egl_display);
-        return EXIT_FAILURE;
-    }
-
-    display = XOpenDisplay (NULL);
-    if (display == NULL) {
-        fprintf (stderr, "%s: can't connect to X server\n", program_name);
-        eglDestroyContext (egl_display, context);
-        eglTerminate (egl_display);
+        XCloseDisplay (display);
         return EXIT_FAILURE;
     }
 
     main_window = window_create (display, "OpenGL Window", 640, 480, visual_id);
     if (main_window == NULL) {
         fprintf (stderr, "%s: can't create game window\n", program_name);
-        XCloseDisplay (display);
         eglDestroyContext (egl_display, context);
         eglTerminate (egl_display);
+        XCloseDisplay (display);
         return EXIT_FAILURE;
     }
     window_surface = eglCreateWindowSurface (egl_display, config,
@@ -404,9 +408,9 @@ int main (int argc, char *const *argv)
     if (window_surface == EGL_NO_SURFACE) {
         fprintf (stderr, "%s: can't create rendering surface\n", program_name);
         window_destroy (main_window);
-        XCloseDisplay (display);
         eglDestroyContext (egl_display, context);
         eglTerminate (egl_display);
+        XCloseDisplay (display);
         return EXIT_FAILURE;
     }
     err = eglMakeCurrent (egl_display, window_surface, window_surface, context);
@@ -415,9 +419,9 @@ int main (int argc, char *const *argv)
                  program_name);
         eglDestroySurface (egl_display, window_surface);
         window_destroy (main_window);
-        XCloseDisplay (display);
         eglDestroyContext (egl_display, context);
         eglTerminate (egl_display);
+        XCloseDisplay (display);
         return EXIT_FAILURE;
     }
     printf ("OpenGL %s\n", glGetString (GL_VERSION));
@@ -429,8 +433,8 @@ int main (int argc, char *const *argv)
     eglMakeCurrent (egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
     eglDestroySurface (egl_display, window_surface);
     window_destroy (main_window);
-    XCloseDisplay (display);
     eglDestroyContext (egl_display, context);
     eglTerminate (egl_display);
+    XCloseDisplay (display);
     return EXIT_SUCCESS;
 }
