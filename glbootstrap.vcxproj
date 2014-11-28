@@ -85,6 +85,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="eglproxy\src\eglproxy.c" />
+    <ClCompile Include="eglproxy\src\egl_proc.c" />
     <ClCompile Include="eglproxy\src\egl_wgl.c" />
     <ClCompile Include="src\main_win32.c" />
   </ItemGroup>

@@ -24,6 +24,9 @@
     <ClCompile Include="eglproxy\src\egl_wgl.c">
       <Filter>Файлы исходного кода</Filter>
     </ClCompile>
+    <ClCompile Include="eglproxy\src\egl_proc.c">
+      <Filter>Файлы исходного кода</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="eglproxy\inc\eglproxy.h">
