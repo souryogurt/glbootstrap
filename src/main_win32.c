@@ -11,7 +11,6 @@
 #endif /* _MSC_VER */
 #include <tchar.h>
 #include <windows.h>
-#include <strsafe.h>
 #ifdef _MSC_VER
 #pragma warning( pop )
 
