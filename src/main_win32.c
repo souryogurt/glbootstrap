@@ -16,6 +16,9 @@
 
 #pragma warning( disable: 4710 )
 #endif /* _MSC_VER */
+#ifdef EGLPROXY_STATIC
+#define EGLAPI
+#endif
 #include <EGL/egl.h>
 #include <GL/gl.h>
 
