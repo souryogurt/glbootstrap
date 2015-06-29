@@ -1,4 +1,4 @@
 [submodule "eglproxy"]
 	path = eglproxy
-	url = git@github.com:souryogurt/eglproxy.git
+	url = https://github.com/souryogurt/eglproxy.git
 
